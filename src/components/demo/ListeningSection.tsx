@@ -18,7 +18,7 @@ interface ListeningSectionProps {
       instructions: string;
       questions: Question[];
     };
-    answer_key: Record<string, number>;
+    answer_key?: Record<string, number>; // Optional for demo mode
   };
   onComplete: (answers: Record<string, number>, score: number) => void;
   timeLimit: number;
@@ -74,6 +74,11 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
   };
 
   const calculateScore = () => {
+    // For demo mode without answer_key, return a mock score
+    if (!exercise.answer_key) {
+      return Math.floor(Math.random() * 30) + 60; // Random score between 60-89
+    }
+    
     let correct = 0;
     Object.entries(exercise.answer_key).forEach(([questionId, correctAnswer]) => {
       if (answers[questionId] === correctAnswer) {
@@ -97,9 +102,9 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const allQuestionsAnswered = Object.keys(exercise.answer_key).every(
-    questionId => answers.hasOwnProperty(questionId)
-  );
+  const allQuestionsAnswered = exercise.answer_key 
+    ? Object.keys(exercise.answer_key).every(questionId => answers.hasOwnProperty(questionId))
+    : exercise.content.questions.every(q => answers.hasOwnProperty(q.id.toString()));
 
   return (
     <Card className="w-full">
