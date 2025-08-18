@@ -171,25 +171,7 @@ export type Database = {
       }
     }
     Functions: {
-      get_demo_exercise_content: {
-        Args: { exercise_id: string }
-        Returns: {
-          content: Json
-          created_at: string
-          id: string
-          skill_type: string
-          title: string
-          updated_at: string
-        }[]
-      }
-      test_answer_key_security: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      verify_public_view_works: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
