@@ -35,10 +35,9 @@ const Footer = () => {
           <div className="space-y-4">
             <h4 className="text-lg font-semibold text-white">Supporto</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Centro assistenza</a></li>
+              <li><Link to="/contatti" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Centro assistenza</Link></li>
               <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">FAQ</a></li>
               <li><Link to="/contatti" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Contatti</Link></li>
-              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Blog</a></li>
             </ul>
           </div>
 

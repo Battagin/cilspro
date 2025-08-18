@@ -14,38 +14,12 @@ export const startCheckoutMensile = async () => {
       return;
     }
 
-    // Try to use Stripe Checkout via Edge Function first
-    const priceId = import.meta.env.VITE_PRICE_ID_MENSILE;
+    // Direct Payment Link redirect - Mensile
+    const paymentLink = "https://buy.stripe.com/test_bJe5kD93k1cqe1E0q82oE00";
     
-    if (priceId) {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      // Open Stripe checkout in a new tab
-      window.open(data.url, '_blank');
-      return;
-    }
-
-    // Fallback to Payment Link
-    const paymentLink = import.meta.env.VITE_PAYMENT_LINK_MENSILE;
+    // Open Payment Link in new tab
+    window.open(paymentLink, '_blank');
     
-    if (paymentLink) {
-      window.location.href = paymentLink;
-      return;
-    }
-
-    // No configuration available
-    toast({
-      title: "Configurazione mancante",
-      description: "Configura i link di pagamento nel file .env",
-      variant: "destructive",
-    });
   } catch (error) {
     console.error('Error starting monthly checkout:', error);
     toast({
@@ -69,38 +43,12 @@ export const startCheckoutAnnuale = async () => {
       return;
     }
 
-    // Try to use Stripe Checkout via Edge Function first
-    const priceId = import.meta.env.VITE_PRICE_ID_ANNUALE;
+    // Direct Payment Link redirect - Annuale
+    const paymentLink = "https://buy.stripe.com/test_6oU8wP6Vcg7k8Hkc8Q2oE01";
     
-    if (priceId) {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      // Open Stripe checkout in a new tab
-      window.open(data.url, '_blank');
-      return;
-    }
-
-    // Fallback to Payment Link
-    const paymentLink = import.meta.env.VITE_PAYMENT_LINK_ANNUALE;
+    // Open Payment Link in new tab
+    window.open(paymentLink, '_blank');
     
-    if (paymentLink) {
-      window.location.href = paymentLink;
-      return;
-    }
-
-    // No configuration available
-    toast({
-      title: "Configurazione mancante",
-      description: "Configura i link di pagamento nel file .env",
-      variant: "destructive",
-    });
   } catch (error) {
     console.error('Error starting yearly checkout:', error);
     toast({
@@ -124,19 +72,18 @@ export const startTrial = async () => {
       return;
     }
 
-    // For now, just redirect to dashboard
-    // In the future, this could create a trial subscription
-    window.location.href = '/dashboard';
+    // Redirect to free training/dashboard
+    window.location.href = '/allenamento-gratuito';
     
     toast({
-      title: "Prova gratuita iniziata",
-      description: "Benvenuto nella tua prova gratuita di CILSpro!",
+      title: "Accesso alla prova gratuita",
+      description: "Inizia subito con gli esercizi gratuiti disponibili!",
     });
   } catch (error) {
     console.error('Error starting trial:', error);
     toast({
       title: "Errore",
-      description: "Si è verificato un errore durante l'avvio della prova gratuita",
+      description: "Si è verificato un errore. Riprova.",
       variant: "destructive",
     });
   }
