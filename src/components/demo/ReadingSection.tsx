@@ -64,10 +64,10 @@ const ReadingSection: React.FC<ReadingSectionProps> = ({
     return Math.round((correct / Object.keys(exercise.answer_key).length) * 100);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (isCompleted) return;
     
-    const score = calculateScore();
+    const score = await calculateScore();
     setIsCompleted(true);
     onComplete(answers, score);
   };
