@@ -83,7 +83,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    info@cilspro.com<br />
+                    contatto@cilspro.com<br />
                     supporto@cilspro.com
                   </p>
                 </CardContent>
@@ -98,7 +98,7 @@ const Contact = () => {
                 </CardHeader>
                 <CardContent>
                   <p className="text-muted-foreground">
-                    +39 0444 123 456<br />
+                    +39 000 000 0000<br />
                     Lunedì - Venerdì: 9:00 - 18:00
                   </p>
                 </CardContent>

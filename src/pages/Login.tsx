@@ -93,15 +93,10 @@ const Login = () => {
             <LanguageSelector variant="compact" />
           </CardHeader>
           <CardContent className="space-y-6">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleGoogleSignIn}
-              disabled={isLoading}
-            >
-              <Chrome className="w-4 h-4 mr-2" />
-              Continua con Google
-            </Button>
+            {/* Hide Google OAuth button if not configured */}
+            <div className="text-center text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              Accesso con Google non disponibile al momento
+            </div>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
