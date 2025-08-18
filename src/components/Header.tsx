@@ -1,12 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { BookOpen, User } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useLanguage } from "@/hooks/useLanguage";
-import { LanguageSelector } from "@/components/LanguageSelector";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Header = () => {
-  const { t } = useLanguage();
   const { user, signOut } = useAuth();
 
   return (
@@ -27,18 +24,20 @@ const Header = () => {
             Funzionalità
           </a>
           <Link to="/piani" className="text-foreground hover:text-primary transition-smooth font-medium">
-            {t("plans")}
+            Piani
+          </Link>
+          <Link to="/abbonamenti" className="text-foreground hover:text-primary transition-smooth font-medium">
+            Abbonamenti
           </Link>
           <Link to="/chi-siamo" className="text-foreground hover:text-primary transition-smooth font-medium">
-            {t("about")}
+            Chi Siamo
           </Link>
           <Link to="/contatti" className="text-foreground hover:text-primary transition-smooth font-medium">
-            {t("contact")}
+            Contatti
           </Link>
         </nav>
 
         <div className="flex items-center gap-4">
-          <LanguageSelector />
           {user ? (
             <div className="flex items-center gap-2">
               <Link to="/dashboard">
@@ -48,7 +47,7 @@ const Header = () => {
                 </Button>
               </Link>
               <Button variant="outline" size="sm" onClick={signOut}>
-                {t("logout")}
+                Esci
               </Button>
             </div>
           ) : (
@@ -56,12 +55,12 @@ const Header = () => {
               <Link to="/login">
                 <Button variant="ghost" size="sm" className="hidden md:flex">
                   <User className="w-4 h-4 mr-2" />
-                  {t("login")}
+                  Accedi
                 </Button>
               </Link>
               <Link to="/registrazione">
                 <Button variant="hero" size="sm">
-                  {t("register")}
+                  Registrati
                 </Button>
               </Link>
             </div>
