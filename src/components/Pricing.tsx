@@ -80,13 +80,8 @@ const Pricing = () => {
 
   const handleSubscribe = async (priceId: string | null) => {
     if (!priceId) {
-      // Handle free plan - navigate to demo
-      setLoadingPlan('free');
-      try {
-        await startTrial();
-      } finally {
-        setLoadingPlan(null);
-      }
+      // Handle free plan - navigate directly to demo, no loading
+      window.location.href = '/demo';
       return;
     }
 
@@ -179,12 +174,12 @@ const Pricing = () => {
                   variant={plan.buttonVariant} 
                   className="w-full py-6 text-base font-semibold"
                   onClick={() => handleSubscribe(plan.priceId)}
-                  disabled={loadingPlan === plan.priceId || (subscription.subscribed && (
+                  disabled={plan.priceId !== null && (loadingPlan === plan.priceId || (subscription.subscribed && (
                     (plan.name === "Mensile" && subscription.subscription_tier === "Monthly") ||
                     (plan.name === "Annuale" && subscription.subscription_tier === "Annual")
-                  ))}
+                  )))}
                 >
-                  {loadingPlan === plan.priceId ? "Elaborando..." : plan.buttonText}
+                  {plan.priceId === null ? "Inizia gratis" : (loadingPlan === plan.priceId ? "Elaborando..." : plan.buttonText)}
                 </Button>
               </CardContent>
             </Card>
