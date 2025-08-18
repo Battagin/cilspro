@@ -4,13 +4,21 @@ import { Check, Star } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { startCheckoutMensile, startCheckoutAnnuale, startTrial } from "@/services/billing";
-import { useState } from "react";
+import { startCheckoutMensile, startCheckoutAnnuale, startTrial, setAuthDependencies } from "@/services/billing";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 const Pricing = () => {
-  const { user, session, subscription } = useAuth();
+  const auth = useAuth();
+  const { user, session, subscription } = auth;
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  
+  // Set auth dependencies for billing service
+  useEffect(() => {
+    setAuthDependencies(auth, navigate);
+  }, [auth, navigate]);
   
   const plans = [
     {
@@ -71,20 +79,14 @@ const Pricing = () => {
   ];
 
   const handleSubscribe = async (priceId: string | null) => {
-    if (!user) {
-      toast({
-        title: "Accesso richiesto",
-        description: "Devi effettuare l'accesso per abbonarti",
-        variant: "destructive",
-      });
-      return;
-    }
-
     if (!priceId) {
-      // Handle free plan or trial
+      // Handle free plan - navigate to demo
       setLoadingPlan('free');
-      await startTrial();
-      setLoadingPlan(null);
+      try {
+        await startTrial();
+      } finally {
+        setLoadingPlan(null);
+      }
       return;
     }
 

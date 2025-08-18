@@ -3,7 +3,8 @@ import { Award, CheckCircle, Globe, Users, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/contexts/AuthContext";
-import heroImage from "@/assets/cilspro-logo-wallpaper.jpg";
+// Use the uploaded hero image
+const heroImage = "/lovable-uploads/01804f8b-c746-4b85-ad1c-000468e3712f.png";
 
 const Hero = () => {
   const { t } = useLanguage();
@@ -77,16 +78,7 @@ const Hero = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
               
-              {/* Logo overlay positioned on the computer screen */}
-              <div className="absolute top-[20%] left-[30%] w-[40%] h-[35%] flex items-center justify-center">
-                <div className="flex items-center gap-2 text-white p-4 bg-black/20 backdrop-blur-sm rounded-lg">
-                  <BookOpen className="h-8 w-8" />
-                  <div className="text-xl font-bold">
-                    <span>CILS</span>
-                    <span className="text-secondary font-light">pro</span>
-                  </div>
-                </div>
-              </div>
+              {/* The new image already has the CILSpro logo on the laptop screen */}
             </div>
             <div className="absolute -bottom-6 -left-6 bg-card p-6 rounded-xl shadow-card border">
               <div className="flex items-center gap-3">
