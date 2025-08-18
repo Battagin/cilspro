@@ -2,9 +2,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Star } from "lucide-react";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useState } from "react";
 
 const Pricing = () => {
   const { t } = useLanguage();
+  const { user, session, subscription } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState<string | null>(null);
   
   const plans = [
     {
@@ -20,7 +27,8 @@ const Pricing = () => {
       ],
       buttonText: "Inizia gratis",
       buttonVariant: "outline" as const,
-      popular: false
+      popular: false,
+      priceId: null
     },
     {
       name: t("monthly"),
@@ -35,9 +43,10 @@ const Pricing = () => {
         "Storico completo",
         "Supporto prioritario"
       ],
-      buttonText: `Abbonati (${t("monthly")})`,
-      buttonVariant: "hero" as const,
-      popular: true
+      buttonText: subscription.subscription_tier === "Monthly" ? "Piano Attivo" : `Abbonati (${t("monthly")})`,
+      buttonVariant: subscription.subscription_tier === "Monthly" ? "outline" as const : "hero" as const,
+      popular: true,
+      priceId: "price_monthly" // Replace with your actual Stripe Price ID
     },
     {
       name: t("yearly"),
@@ -54,12 +63,51 @@ const Pricing = () => {
         "Materiale extra in PDF",
         "Garanzia di approvazione"
       ],
-      buttonText: `Abbonati (${t("yearly")})`,
-      buttonVariant: "feature" as const,
+      buttonText: subscription.subscription_tier === "Annual" ? "Piano Attivo" : `Abbonati (${t("yearly")})`,
+      buttonVariant: subscription.subscription_tier === "Annual" ? "outline" as const : "feature" as const,
       popular: false,
-      badge: t("bestValue")
+      badge: t("bestValue"),
+      priceId: "price_yearly" // Replace with your actual Stripe Price ID
     }
   ];
+
+  const handleSubscribe = async (priceId: string | null) => {
+    if (!priceId) return;
+    
+    if (!user) {
+      toast({
+        title: "Accesso richiesto",
+        description: "Devi effettuare l'accesso per abbonarti",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(priceId);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: { priceId },
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      // Open Stripe checkout in a new tab
+      window.open(data.url, '_blank');
+    } catch (error) {
+      console.error('Error creating checkout:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante la creazione del checkout",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(null);
+    }
+  };
 
   return (
     <section id="pricing" className="py-24 bg-background">
@@ -134,8 +182,13 @@ const Pricing = () => {
                 <Button 
                   variant={plan.buttonVariant} 
                   className="w-full py-6 text-base font-semibold"
+                  onClick={() => handleSubscribe(plan.priceId)}
+                  disabled={loading === plan.priceId || (subscription.subscribed && (
+                    (plan.name === t("monthly") && subscription.subscription_tier === "Monthly") ||
+                    (plan.name === t("yearly") && subscription.subscription_tier === "Annual")
+                  ))}
                 >
-                  {plan.buttonText}
+                  {loading === plan.priceId ? "Elaborando..." : plan.buttonText}
                 </Button>
               </CardContent>
             </Card>

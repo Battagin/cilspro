@@ -7,14 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Headphones, Eye, PenTool, Mic, LogOut, BarChart3, TrendingUp, Play, CheckCircle, Clock } from "lucide-react";
+import { BookOpen, Headphones, Eye, PenTool, Mic, LogOut, BarChart3, TrendingUp, Play, CheckCircle, Clock, Settings } from "lucide-react";
 import ProgressChart from "@/components/ProgressChart";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
-  const { user, signOut, loading } = useAuth();
+  const { user, signOut, loading, session, subscription, refreshSubscription } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<"7days" | "30days">("7days");
+  const [managingSubscription, setManagingSubscription] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -36,6 +40,37 @@ const Dashboard = () => {
   if (!user) {
     return null;
   }
+
+  const handleManageSubscription = async () => {
+    if (!subscription.subscribed) {
+      navigate('/plans');
+      return;
+    }
+
+    setManagingSubscription(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('customer-portal', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      // Open Stripe customer portal in a new tab
+      window.open(data.url, '_blank');
+    } catch (error) {
+      console.error('Error opening customer portal:', error);
+      toast({
+        title: "Errore",
+        description: "Si è verificato un errore durante l'apertura del portale clienti",
+        variant: "destructive",
+      });
+    } finally {
+      setManagingSubscription(false);
+    }
+  };
 
   const competencies = [
     {
@@ -84,8 +119,41 @@ const Dashboard = () => {
               Benvenuto, {user.user_metadata?.display_name || user.email}!
             </h1>
             <p className="text-muted-foreground">Continua la tua preparazione per la CILS B1 Cittadinanza</p>
+            {subscription.subscribed && (
+              <div className="mt-2 flex items-center gap-2">
+                <span className="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">
+                  Piano {subscription.subscription_tier}
+                </span>
+                {subscription.subscription_end && (
+                  <span className="text-xs text-muted-foreground">
+                    Rinnovo: {new Date(subscription.subscription_end).toLocaleDateString('it-IT')}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManageSubscription}
+              disabled={managingSubscription}
+              className="flex items-center gap-2"
+            >
+              <Settings className="w-4 h-4" />
+              {subscription.subscribed ? 
+                (managingSubscription ? "Caricamento..." : "Gestisci Abbonamento") : 
+                "Abbonati"
+              }
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={refreshSubscription}
+              className="text-muted-foreground"
+            >
+              Aggiorna Status
+            </Button>
             <LanguageSelector />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="w-4 h-4 mr-2" />
