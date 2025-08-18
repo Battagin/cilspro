@@ -23,7 +23,7 @@ interface DemoExercise {
   skill_type: string;
   title: string;
   content: any;
-  answer_key: any;
+  answer_key?: any; // Optional since public view doesn't include this
 }
 
 interface SkillResult {
@@ -60,7 +60,7 @@ const Demo = () => {
   const loadExercises = async () => {
     try {
       const { data, error } = await supabase
-        .from('demo_exercises')
+        .from('demo_exercises_public')
         .select('*')
         .order('skill_type');
 

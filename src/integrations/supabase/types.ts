@@ -142,7 +142,33 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      demo_exercises_public: {
+        Row: {
+          content: Json | null
+          created_at: string | null
+          id: string | null
+          skill_type: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: Json | null
+          created_at?: string | null
+          id?: string | null
+          skill_type?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: Json | null
+          created_at?: string | null
+          id?: string | null
+          skill_type?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_demo_exercise_content: {
