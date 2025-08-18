@@ -7,8 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox";
 import { BookOpen, Mail, Lock, User, ArrowLeft, Chrome } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/hooks/useLanguage";
-import { LanguageSelector } from "@/components/LanguageSelector";
 import { useToast } from "@/components/ui/use-toast";
 
 const Register = () => {
@@ -21,7 +19,6 @@ const Register = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const { signUp, signInWithGoogle, user } = useAuth();
-  const { t } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -36,7 +33,7 @@ const Register = () => {
     
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: "Le password non corrispondono",
         variant: "destructive",
       });
@@ -45,7 +42,7 @@ const Register = () => {
 
     if (!formData.acceptTerms) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: "Devi accettare i termini e condizioni",
         variant: "destructive",
       });
@@ -58,13 +55,13 @@ const Register = () => {
 
     if (error) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: t("success"),
+        title: "Successo",
         description: "Registrazione completata! Controlla la tua email per confermare l'account.",
       });
       // Don't navigate immediately, let them check email first
@@ -79,7 +76,7 @@ const Register = () => {
     
     if (error) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: error.message,
         variant: "destructive",
       });
@@ -114,12 +111,11 @@ const Register = () => {
         <Card className="shadow-elegant">
           <CardHeader className="space-y-4">
             <div className="text-center">
-              <CardTitle className="text-2xl font-bold">{t("register")}</CardTitle>
+              <CardTitle className="text-2xl font-bold">Registrati</CardTitle>
               <CardDescription>
                 Crea il tuo account CILSpro gratuitamente
               </CardDescription>
             </div>
-            <LanguageSelector variant="compact" />
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Hide Google OAuth button if not configured */}
@@ -140,7 +136,7 @@ const Register = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">{t("name")}</Label>
+                <Label htmlFor="name">Nome</Label>
                 <div className="relative">
                   <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -156,7 +152,7 @@ const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">{t("email")}</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -172,7 +168,7 @@ const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t("password")}</Label>
+                <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -189,7 +185,7 @@ const Register = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">{t("confirmPassword")}</Label>
+                <Label htmlFor="confirmPassword">Conferma Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -226,14 +222,14 @@ const Register = () => {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading || !formData.acceptTerms}>
-                {isLoading ? t("loading") : t("register")}
+                {isLoading ? "Caricamento..." : "Registrati"}
               </Button>
             </form>
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Hai già un account? </span>
               <Link to="/login" className="text-secondary hover:underline font-medium">
-                {t("login")}
+                Accedi
               </Link>
             </div>
           </CardContent>

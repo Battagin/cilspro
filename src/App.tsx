@@ -15,7 +15,7 @@ import FreeTraining from "./pages/FreeTraining";
 import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
-import Abbonamenti from "./pages/Abbonamenti";
+
 
 const queryClient = new QueryClient();
 
@@ -33,8 +33,6 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/allenamento-gratuito" element={<FreeTraining />} />
           <Route path="/piani" element={<Plans />} />
-          <Route path="/abbonamenti" element={<Abbonamenti />} />
-          <Route path="/subscriptions" element={<Abbonamenti />} />
           <Route path="/chi-siamo" element={<About />} />
           <Route path="/contatti" element={<Contact />} />
           <Route path="/privacy" element={<Privacy />} />

@@ -1,10 +1,7 @@
 import { BookOpen, Mail, Phone, MapPin } from "lucide-react";
-import { useLanguage } from "@/hooks/useLanguage";
-import { LanguageSelector } from "@/components/LanguageSelector";
 import { Link } from "react-router-dom";
 
 const Footer = () => {
-  const { t } = useLanguage();
   
   return (
     <footer className="bg-primary text-primary-foreground py-16">
@@ -21,30 +18,27 @@ const Footer = () => {
               </div>
             </div>
             <p className="text-primary-foreground/80 text-sm leading-relaxed">
-              {t("footerDescription")}
+              La piattaforma più completa per la preparazione all'esame CILS B1 Cittadinanza. Ottieni la tua cittadinanza con sicurezza.
             </p>
-            <div className="pt-4">
-              <LanguageSelector variant="compact" />
-            </div>
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">{t("platform")}</h4>
+            <h4 className="text-lg font-semibold text-white">Piattaforma</h4>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/#features" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("features")}</Link></li>
-              <li><Link to="/piani" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("plans")}</Link></li>
-              <li><Link to="/demo" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("simulations")}</Link></li>
-              <li><Link to="/allenamento-gratuito" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("exercises")}</Link></li>
+              <li><Link to="/#features" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Funzionalità</Link></li>
+              <li><Link to="/piani" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Piani</Link></li>
+              <li><Link to="/demo" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Simulazioni</Link></li>
+              <li><Link to="/allenamento-gratuito" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Esercizi</Link></li>
             </ul>
           </div>
 
           <div className="space-y-4">
-            <h4 className="text-lg font-semibold text-white">{t("support")}</h4>
+            <h4 className="text-lg font-semibold text-white">Supporto</h4>
             <ul className="space-y-2 text-sm">
-              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("helpCenter")}</a></li>
-              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("faq")}</a></li>
-              <li><Link to="/contatti" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("contact")}</Link></li>
-              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">{t("blog")}</a></li>
+              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Centro assistenza</a></li>
+              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">FAQ</a></li>
+              <li><Link to="/contatti" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Contatti</Link></li>
+              <li><a href="#" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Blog</a></li>
             </ul>
           </div>
 
@@ -69,14 +63,14 @@ const Footer = () => {
 
         <div className="border-t border-primary-foreground/20 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-primary-foreground/60 text-sm">
-            {t("allRightsReserved")}
+            © 2025 CILSpro. Tutti i diritti riservati.
           </p>
           <div className="flex gap-6 text-sm">
             <Link to="/privacy" className="text-primary-foreground/80 hover:text-secondary transition-smooth">
-              {t("privacyPolicy")}
+              Privacy
             </Link>
             <Link to="/termini" className="text-primary-foreground/80 hover:text-secondary transition-smooth">
-              {t("termsOfService")}
+              Termini d'uso
             </Link>
           </div>
         </div>

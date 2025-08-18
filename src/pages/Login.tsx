@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, Mail, Lock, ArrowLeft, Chrome } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/hooks/useLanguage";
-import { LanguageSelector } from "@/components/LanguageSelector";
 import { useToast } from "@/components/ui/use-toast";
 
 const Login = () => {
@@ -15,7 +13,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signIn, signInWithGoogle, user } = useAuth();
-  const { t } = useLanguage();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -33,13 +30,13 @@ const Login = () => {
 
     if (error) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: error.message,
         variant: "destructive",
       });
     } else {
       toast({
-        title: t("success"),
+        title: "Successo",
         description: "Login effettuato con successo!",
       });
       navigate("/dashboard");
@@ -54,7 +51,7 @@ const Login = () => {
     
     if (error) {
       toast({
-        title: t("error"),
+        title: "Errore",
         description: error.message,
         variant: "destructive",
       });
@@ -85,12 +82,11 @@ const Login = () => {
         <Card className="shadow-elegant">
           <CardHeader className="space-y-4">
             <div className="text-center">
-              <CardTitle className="text-2xl font-bold">{t("login")}</CardTitle>
+              <CardTitle className="text-2xl font-bold">Accedi</CardTitle>
               <CardDescription>
                 Accedi al tuo account CILSpro
               </CardDescription>
             </div>
-            <LanguageSelector variant="compact" />
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Hide Google OAuth button if not configured */}
@@ -111,7 +107,7 @@ const Login = () => {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">{t("email")}</Label>
+                <Label htmlFor="email">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -127,7 +123,7 @@ const Login = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">{t("password")}</Label>
+                <Label htmlFor="password">Password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -143,19 +139,19 @@ const Login = () => {
 
               <div className="flex items-center justify-between text-sm">
                 <Link to="/reset-password" className="text-secondary hover:underline">
-                  {t("forgotPassword")}
+                  Password dimenticata?
                 </Link>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? t("loading") : t("login")}
+                {isLoading ? "Caricamento..." : "Accedi"}
               </Button>
             </form>
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Non hai un account? </span>
               <Link to="/registrazione" className="text-secondary hover:underline font-medium">
-                {t("register")}
+                Registrati
               </Link>
             </div>
           </CardContent>

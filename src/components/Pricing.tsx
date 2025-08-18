@@ -1,17 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Star } from "lucide-react";
-import { useLanguage } from "@/hooks/useLanguage";
+
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { startCheckoutMensile, startCheckoutAnnuale, startTrial } from "@/services/billing";
 import { useState } from "react";
 
 const Pricing = () => {
-  const { t } = useLanguage();
   const { user, session, subscription } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState<string | null>(null);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   
   const plans = [
     {
@@ -31,7 +30,7 @@ const Pricing = () => {
       priceId: null
     },
     {
-      name: t("monthly"),
+      name: "Mensile",
       price: "15",
       period: "/mese",
       description: "Preparazione completa per l'approvazione",
@@ -43,13 +42,13 @@ const Pricing = () => {
         "Storico completo",
         "Supporto prioritario"
       ],
-      buttonText: subscription.subscription_tier === "Monthly" ? "Piano Attivo" : `Abbonati (${t("monthly")})`,
+      buttonText: subscription.subscription_tier === "Monthly" ? "Piano Attivo" : "Abbonati (Mensile)",
       buttonVariant: subscription.subscription_tier === "Monthly" ? "outline" as const : "hero" as const,
       popular: true,
       priceId: "price_monthly" // Replace with your actual Stripe Price ID
     },
     {
-      name: t("yearly"),
+      name: "Annuale",
       price: "10",
       period: "/mese",
       originalPrice: "15",
@@ -63,17 +62,15 @@ const Pricing = () => {
         "Materiale extra in PDF",
         "Garanzia di approvazione"
       ],
-      buttonText: subscription.subscription_tier === "Annual" ? "Piano Attivo" : `Abbonati (${t("yearly")})`,
+      buttonText: subscription.subscription_tier === "Annual" ? "Piano Attivo" : "Abbonati (Annuale)",
       buttonVariant: subscription.subscription_tier === "Annual" ? "outline" as const : "feature" as const,
       popular: false,
-      badge: t("bestValue"),
+      badge: "Più Conveniente",
       priceId: "price_yearly" // Replace with your actual Stripe Price ID
     }
   ];
 
   const handleSubscribe = async (priceId: string | null) => {
-    if (!priceId) return;
-    
     if (!user) {
       toast({
         title: "Accesso richiesto",
@@ -83,29 +80,26 @@ const Pricing = () => {
       return;
     }
 
-    setLoading(priceId);
-    
+    if (!priceId) {
+      // Handle free plan or trial
+      setLoadingPlan('free');
+      await startTrial();
+      setLoadingPlan(null);
+      return;
+    }
+
+    setLoadingPlan(priceId);
+
     try {
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceId },
-        headers: {
-          Authorization: `Bearer ${session?.access_token}`,
-        },
-      });
-
-      if (error) throw error;
-
-      // Open Stripe checkout in a new tab
-      window.open(data.url, '_blank');
+      if (priceId === 'price_monthly') {
+        await startCheckoutMensile();
+      } else if (priceId === 'price_yearly') {
+        await startCheckoutAnnuale();
+      }
     } catch (error) {
-      console.error('Error creating checkout:', error);
-      toast({
-        title: "Errore",
-        description: "Si è verificato un errore durante la creazione del checkout",
-        variant: "destructive",
-      });
+      console.error('Error starting checkout:', error);
     } finally {
-      setLoading(null);
+      setLoadingPlan(null);
     }
   };
 
@@ -114,10 +108,10 @@ const Pricing = () => {
       <div className="container mx-auto px-4">
         <div className="text-center space-y-6 mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
-            {t("pricingTitle")}
+            Scegli il tuo piano ideale
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            {t("pricingSubtitle")}
+            Inizia gratuitamente ed evolvi verso le funzionalità premium secondo le tue necessità
           </p>
         </div>
 
@@ -133,7 +127,7 @@ const Pricing = () => {
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <div className="bg-gradient-feature text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
                     <Star className="w-4 h-4" />
-                    {t("mostPopular")}
+                    Più Popolare
                   </div>
                 </div>
               )}
@@ -183,12 +177,12 @@ const Pricing = () => {
                   variant={plan.buttonVariant} 
                   className="w-full py-6 text-base font-semibold"
                   onClick={() => handleSubscribe(plan.priceId)}
-                  disabled={loading === plan.priceId || (subscription.subscribed && (
-                    (plan.name === t("monthly") && subscription.subscription_tier === "Monthly") ||
-                    (plan.name === t("yearly") && subscription.subscription_tier === "Annual")
+                  disabled={loadingPlan === plan.priceId || (subscription.subscribed && (
+                    (plan.name === "Mensile" && subscription.subscription_tier === "Monthly") ||
+                    (plan.name === "Annuale" && subscription.subscription_tier === "Annual")
                   ))}
                 >
-                  {loading === plan.priceId ? "Elaborando..." : plan.buttonText}
+                  {loadingPlan === plan.priceId ? "Elaborando..." : plan.buttonText}
                 </Button>
               </CardContent>
             </Card>
@@ -197,7 +191,7 @@ const Pricing = () => {
 
         <div className="text-center mt-16 space-y-4">
           <p className="text-muted-foreground">
-            Tutti i piani includono <strong>garanzia di 30 giorni</strong>
+            Tutti i piani includono <strong>garanzia di 7 giorni</strong>
           </p>
           <p className="text-sm text-muted-foreground">
             Cancella in qualsiasi momento • Nessuna commissione di setup • Supporto 24/7

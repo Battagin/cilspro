@@ -1,8 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/hooks/useLanguage";
-import { LanguageSelector } from "@/components/LanguageSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -11,10 +9,10 @@ import { BookOpen, Headphones, Eye, PenTool, Mic, LogOut, BarChart3, TrendingUp,
 import ProgressChart from "@/components/ProgressChart";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { refreshSubscriptionStatus } from "@/services/account";
 
 const Dashboard = () => {
   const { user, signOut, loading, session, subscription, refreshSubscription } = useAuth();
-  const { t } = useLanguage();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedPeriod, setSelectedPeriod] = useState<"7days" | "30days">("7days");
@@ -31,7 +29,7 @@ const Dashboard = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">{t("loading")}</p>
+          <p className="mt-4 text-muted-foreground">Caricamento...</p>
         </div>
       </div>
     );
@@ -43,7 +41,7 @@ const Dashboard = () => {
 
   const handleManageSubscription = async () => {
     if (!subscription.subscribed) {
-      navigate('/plans');
+      navigate('/piani');
       return;
     }
 
@@ -72,27 +70,32 @@ const Dashboard = () => {
     }
   };
 
+  const handleRefreshSubscription = async () => {
+    await refreshSubscriptionStatus();
+    await refreshSubscription();
+  };
+
   const competencies = [
     {
-      name: t("ascolto"),
+      name: "Ascolto",
       icon: Headphones,
       progress: 75,
       errors: ["Identificazione del tema principale", "Comprensione di dettagli specifici"],
     },
     {
-      name: t("lettura"),
+      name: "Lettura",
       icon: Eye,
       progress: 68,
       errors: ["Collegamento tra informazioni", "Comprensione del lessico specifico"],
     },
     {
-      name: t("scrittura"),
+      name: "Scrittura e Strutture",
       icon: PenTool,
       progress: 62,
       errors: ["Coerenza testuale", "Uso corretto dei connettivi", "Strutture grammaticali complesse"],
     },
     {
-      name: t("produzione_orale"),
+      name: "Produzione Orale",
       icon: Mic,
       progress: 70,
       errors: ["Fluenza espositiva", "Pronuncia di suoni specifici"],
@@ -149,15 +152,14 @@ const Dashboard = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={refreshSubscription}
+              onClick={handleRefreshSubscription}
               className="text-muted-foreground"
             >
               Aggiorna Status
             </Button>
-            <LanguageSelector />
             <Button variant="outline" onClick={signOut}>
               <LogOut className="w-4 h-4 mr-2" />
-              {t("logout")}
+              Esci
             </Button>
           </div>
         </div>

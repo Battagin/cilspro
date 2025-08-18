@@ -26,9 +26,6 @@ const Header = () => {
           <Link to="/piani" className="text-foreground hover:text-primary transition-smooth font-medium">
             Piani
           </Link>
-          <Link to="/abbonamenti" className="text-foreground hover:text-primary transition-smooth font-medium">
-            Abbonamenti
-          </Link>
           <Link to="/chi-siamo" className="text-foreground hover:text-primary transition-smooth font-medium">
             Chi Siamo
           </Link>
