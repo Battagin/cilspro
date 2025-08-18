@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Award, CheckCircle, Globe, Users } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useLanguage } from "@/hooks/useLanguage";
+import { useAuth } from "@/contexts/AuthContext";
 import heroImage from "@/assets/hero-image.jpg";
 
 const Hero = () => {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+
   return (
     <section className="pt-24 pb-16 bg-gradient-to-br from-background via-muted/20 to-secondary/10">
       <div className="container mx-auto px-4">
@@ -11,51 +17,52 @@ const Hero = () => {
             <div className="space-y-4">
               <div className="inline-flex items-center gap-2 bg-secondary/10 text-secondary px-4 py-2 rounded-full text-sm font-medium">
                 <Award className="w-4 h-4" />
-                Preparação Oficial CILS B1 Cittadinanza
+                Preparazione Ufficiale CILS B1 Cittadinanza
               </div>
               <h1 className="text-5xl lg:text-6xl font-bold text-foreground leading-tight">
-                Conquiste sua
-                <span className="bg-gradient-hero bg-clip-text text-transparent"> cidadania italiana</span>
+                {t("heroTitle")}
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed">
-                Plataforma completa de estudos para o exame CILS B1 Cittadinanza. 
-                Simulados oficiais, exercícios interativos e feedback com IA para 
-                acelerar sua aprovação.
+                {t("heroSubtitle")}
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Button variant="hero" size="lg" className="text-lg px-8 py-6">
-                Iniciar Preparação Gratuita
-              </Button>
-              <Button variant="outline" size="lg" className="text-lg px-8 py-6">
-                Ver Simulado Demo
-              </Button>
+              <Link to={user ? "/dashboard" : "/registrazione"}>
+                <Button variant="hero" size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
+                  {t("startFreePrep")}
+                </Button>
+              </Link>
+              <Link to="/demo">
+                <Button variant="outline" size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
+                  {t("viewDemo")}
+                </Button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-2 gap-6 pt-8">
               <div className="flex items-center gap-3">
                 <CheckCircle className="w-5 h-5 text-secondary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  +1000 questões oficiais
+                  +1000 esercizi ufficiali
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <Globe className="w-5 h-5 text-secondary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  Correção automática IA
+                  Correzione automatica IA
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-secondary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  +5000 alunos aprovados
+                  +5000 studenti approvati
                 </span>
               </div>
               <div className="flex items-center gap-3">
                 <Award className="w-5 h-5 text-secondary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  Simulação 100% oficial
+                  Simulazione 100% ufficiale
                 </span>
               </div>
             </div>
@@ -65,7 +72,7 @@ const Hero = () => {
             <div className="relative rounded-2xl overflow-hidden shadow-elegant">
               <img 
                 src={heroImage} 
-                alt="Preparação para cidadania italiana - CILSpro"
+                alt="Preparazione per cittadinanza italiana - CILSpro"
                 className="w-full h-auto object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-primary/20 to-transparent"></div>
@@ -74,7 +81,7 @@ const Hero = () => {
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 bg-secondary rounded-full animate-pulse"></div>
                 <span className="text-sm font-medium text-foreground">
-                  92% taxa de aprovação
+                  92% tasso di approvazione
                 </span>
               </div>
             </div>

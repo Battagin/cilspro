@@ -1,59 +1,63 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Check, Star } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
 
 const Pricing = () => {
+  const { t } = useLanguage();
+  
   const plans = [
     {
       name: "Gratuito",
       price: "0",
-      period: "para sempre",
-      description: "Ideal para conhecer a plataforma",
+      period: "per sempre",
+      description: "Ideale per conoscere la piattaforma",
       features: [
-        "3 simulados completos",
-        "50 exercícios extras",
-        "Feedback básico",
-        "Progresso limitado"
+        "3 simulazioni complete",
+        "50 esercizi extra",
+        "Feedback di base",
+        "Progresso limitato"
       ],
-      buttonText: "Começar Grátis",
+      buttonText: "Inizia Gratis",
       buttonVariant: "outline" as const,
       popular: false
     },
     {
-      name: "Premium",
-      price: "39",
-      period: "/mês",
-      description: "Preparação completa para aprovação",
+      name: "Mensile",
+      price: "15",
+      period: "/mese",
+      description: "Preparazione completa per l'approvazione",
       features: [
-        "Simulados ilimitados",
-        "1000+ exercícios extras",
-        "Correção IA avançada",
-        "Relatórios detalhados em PDF",
-        "Histórico completo",
-        "Suporte prioritário"
+        "Simulazioni illimitate",
+        "1000+ esercizi extra",
+        "Correzione IA avanzata",
+        "Report dettagliati in PDF",
+        "Storico completo",
+        "Supporto prioritario"
       ],
-      buttonText: "Assinar Premium",
+      buttonText: t("subscribe"),
       buttonVariant: "hero" as const,
       popular: true
     },
     {
-      name: "Anual",
-      price: "29",
-      period: "/mês",
-      originalPrice: "39",
-      description: "Economia de 25% no plano anual",
+      name: "Annuale",
+      price: "10",
+      period: "/mese",
+      originalPrice: "15",
+      yearlyPrice: "120",
+      description: "Risparmio del 33% sul piano annuale",
       features: [
-        "Tudo do Premium",
-        "Acesso à comunidade VIP",
-        "Sessões de prática ao vivo",
-        "Consultoria personalizada",
-        "Material extra em PDF",
-        "Garantia de aprovação"
+        "Tutto del piano Mensile",
+        "Accesso alla community VIP",
+        "Sessioni di pratica dal vivo",
+        "Consulenza personalizzata",
+        "Materiale extra in PDF",
+        "Garanzia di approvazione"
       ],
-      buttonText: "Assinar Anual",
+      buttonText: t("subscribe"),
       buttonVariant: "feature" as const,
       popular: false,
-      badge: "Melhor Valor"
+      badge: t("bestValue")
     }
   ];
 
@@ -62,11 +66,10 @@ const Pricing = () => {
       <div className="container mx-auto px-4">
         <div className="text-center space-y-6 mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
-            Escolha seu
-            <span className="bg-gradient-hero bg-clip-text text-transparent"> plano ideal</span>
+            {t("pricingTitle")}
           </h2>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Comece gratuitamente e evolua para recursos premium conforme sua necessidade
+            {t("pricingSubtitle")}
           </p>
         </div>
 
@@ -97,16 +100,23 @@ const Pricing = () => {
 
               <CardHeader className="text-center space-y-4 pt-8">
                 <CardTitle className="text-2xl font-bold text-foreground">{plan.name}</CardTitle>
-                <div className="space-y-2">
+                  <div className="space-y-2">
                   <div className="flex items-baseline justify-center gap-2">
                     {plan.originalPrice && (
                       <span className="text-lg text-muted-foreground line-through">
-                        R$ {plan.originalPrice}
+                        € {plan.originalPrice}
                       </span>
                     )}
-                    <span className="text-4xl font-bold text-foreground">R$ {plan.price}</span>
+                    <span className="text-4xl font-bold text-foreground">€ {plan.price}</span>
                     <span className="text-muted-foreground">{plan.period}</span>
                   </div>
+                  {plan.yearlyPrice && (
+                    <div className="text-center">
+                      <span className="text-lg text-muted-foreground">
+                        (€ {plan.yearlyPrice}/anno)
+                      </span>
+                    </div>
+                  )}
                   <p className="text-sm text-muted-foreground">{plan.description}</p>
                 </div>
               </CardHeader>
@@ -134,10 +144,10 @@ const Pricing = () => {
 
         <div className="text-center mt-16 space-y-4">
           <p className="text-muted-foreground">
-            Todos os planos incluem <strong>garantia de 30 dias</strong>
+            Tutti i piani includono <strong>garanzia di 30 giorni</strong>
           </p>
           <p className="text-sm text-muted-foreground">
-            Cancele a qualquer momento • Sem taxa de setup • Suporte 24/7
+            Cancella in qualsiasi momento • Nessuna commissione di setup • Supporto 24/7
           </p>
         </div>
       </div>
