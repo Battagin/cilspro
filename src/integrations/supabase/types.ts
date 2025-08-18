@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      demo_attempts: {
+        Row: {
+          completed_at: string
+          created_at: string
+          id: string
+          results: Json
+          session_id: string
+          total_score: number
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          results: Json
+          session_id: string
+          total_score?: number
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string
+          created_at?: string
+          id?: string
+          results?: Json
+          session_id?: string
+          total_score?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      demo_exercises: {
+        Row: {
+          answer_key: Json
+          content: Json
+          created_at: string
+          id: string
+          skill_type: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          answer_key: Json
+          content: Json
+          created_at?: string
+          id?: string
+          skill_type: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          answer_key?: Json
+          content?: Json
+          created_at?: string
+          id?: string
+          skill_type?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
