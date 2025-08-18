@@ -182,6 +182,14 @@ export type Database = {
           updated_at: string
         }[]
       }
+      test_answer_key_security: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      verify_public_view_works: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
