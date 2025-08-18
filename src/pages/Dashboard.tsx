@@ -2,10 +2,11 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/hooks/useLanguage";
+import { LanguageSelector } from "@/components/LanguageSelector";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { BookOpen, Headphones, Eye, PenTool, Mic, LogOut } from "lucide-react";
+import { BookOpen, Headphones, Eye, PenTool, Mic, LogOut, BarChart3, TrendingUp } from "lucide-react";
 
 const Dashboard = () => {
   const { user, signOut, loading } = useAuth();
@@ -82,10 +83,13 @@ const Dashboard = () => {
               </p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            {t("logout")}
-          </Button>
+          <div className="flex items-center gap-4">
+            <LanguageSelector variant="compact" />
+            <Button variant="outline" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              {t("logout")}
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -133,29 +137,52 @@ const Dashboard = () => {
                 <PenTool className="w-4 h-4 mr-2" />
                 Scrittura e Strutture
               </Button>
+              <Button className="w-full justify-start" variant="outline">
+                <Mic className="w-4 h-4 mr-2" />
+                Produzione Orale
+              </Button>
             </CardContent>
           </Card>
 
           <Card className="shadow-elegant">
             <CardHeader>
-              <CardTitle>Statistiche</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <BarChart3 className="w-5 h-5" />
+                Statistiche & Progresso
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Simulazioni completate</span>
-                <span className="font-medium">12</span>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Simulazioni completate</span>
+                  <span className="font-medium">12</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Media generale</span>
+                  <span className="font-medium text-secondary">78%</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tempo di studio</span>
+                  <span className="font-medium">24h 30m</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Livello attuale</span>
+                  <span className="font-medium text-primary">B1 Intermedio</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Media generale</span>
-                <span className="font-medium text-secondary">78%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Tempo di studio</span>
-                <span className="font-medium">24h 30m</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Livello attuale</span>
-                <span className="font-medium text-primary">B1 Intermedio</span>
+              
+              <div className="border-t pt-4">
+                <h4 className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4" />
+                  Progresso ultimi 30 giorni
+                </h4>
+                <div className="h-32 bg-muted/30 rounded-lg flex items-center justify-center">
+                  <div className="text-center text-muted-foreground">
+                    <BarChart3 className="w-8 h-8 mx-auto mb-2" />
+                    <p className="text-sm">Dati non disponibili</p>
+                    <p className="text-xs">Completa più simulazioni per vedere il grafico</p>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>

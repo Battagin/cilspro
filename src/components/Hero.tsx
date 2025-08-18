@@ -3,7 +3,7 @@ import { Award, CheckCircle, Globe, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/hooks/useLanguage";
 import { useAuth } from "@/contexts/AuthContext";
-import heroImage from "@/assets/hero-image.jpg";
+import heroImage from "@/assets/cilspro-logo-wallpaper.jpg";
 
 const Hero = () => {
   const { t } = useLanguage();
@@ -28,7 +28,7 @@ const Hero = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to={user ? "/dashboard" : "/registrazione"}>
+              <Link to={user ? "/allenamento-gratuito" : "/registrazione"}>
                 <Button variant="hero" size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
                   {t("startFreePrep")}
                 </Button>

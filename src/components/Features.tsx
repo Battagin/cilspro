@@ -11,37 +11,35 @@ import {
   Target,
   Zap
 } from "lucide-react";
+import { useLanguage } from "@/hooks/useLanguage";
+import { Link } from "react-router-dom";
 
 const Features = () => {
+  const { t } = useLanguage();
+  
   const skills = [
     {
       icon: Headphones,
-      title: "Ascolto",
-      description: "Áudios oficiais com limite de 2 escutas, questões de múltipla escolha e verdadeiro/falso",
+      title: t("ascolto"),
+      description: "Audio ufficiali con limite di 2 ascolti, domande a scelta multipla e vero/falso",
       color: "bg-blue-50 text-blue-600"
     },
     {
       icon: BookOpen,
-      title: "Lettura",
-      description: "Textos curtos autênticos com exercícios de compreensão no estilo oficial CILS",
+      title: t("lettura"),
+      description: "Testi brevi autentici con esercizi di comprensione in stile ufficiale CILS",
       color: "bg-green-50 text-green-600"
     },
     {
       icon: PenTool,
-      title: "Strutture",
-      description: "Exercícios de gramática e uso da língua com feedback detalhado e explicações",
-      color: "bg-purple-50 text-purple-600"
-    },
-    {
-      icon: PenTool,
-      title: "Scrittura",
-      description: "Redações corrigidas por IA seguindo a rubrica oficial CILS com pontuação detalhada",
+      title: t("scrittura"),
+      description: "Testi corretti dall'IA seguendo la rubrica ufficiale CILS con punteggio dettagliato. Include strutture grammaticali.",
       color: "bg-orange-50 text-orange-600"
     },
     {
       icon: Mic,
-      title: "Orale",
-      description: "Gravação no navegador com avaliação automática de pronúncia e fluência",
+      title: t("produzione_orale"),
+      description: "Registrazione nel browser con valutazione automatica di pronuncia e fluenza",
       color: "bg-red-50 text-red-600"
     }
   ];
@@ -49,28 +47,28 @@ const Features = () => {
   const features = [
     {
       icon: Brain,
-      title: "IA Avançada",
-      description: "Correção automática com ChatGPT e feedback personalizado para cada competência"
+      title: "Simulazioni temporizzate in stile CILS",
+      description: "Timer ufficiale che simula le condizioni reali dell'esame con controllo del tempo per sezione"
     },
     {
       icon: BarChart,
-      title: "Progresso Detalhado",
-      description: "Dashboard completo com histórico de simulados e percentual por habilidade"
+      title: "Correzione con IA per scrittura e orale",
+      description: "Correzione automatica avanzata con feedback personalizzato per ogni competenza"
     },
     {
       icon: Clock,
-      title: "Timer Oficial",
-      description: "Simulação das condições reais da prova com controle de tempo por seção"
+      title: "Report di progresso per competenza",
+      description: "Dashboard completo con storico delle simulazioni e percentuali per abilità"
     },
     {
       icon: Target,
-      title: "Foco na Cittadinanza",
-      description: "Conteúdo específico para cidadania: trabalho, saúde, serviços públicos"
+      title: "Flashcard e quiz mirati al lessico di cittadinanza",
+      description: "Contenuto specifico per cittadinanza: lavoro, salute, servizi pubblici"
     },
     {
       icon: Zap,
-      title: "Feedback Imediato",
-      description: "Correção instantânea com sugestões personalizadas para melhorar"
+      title: "Accesso illimitato ai contenuti per abbonati",
+      description: "Oltre 180 esercizi e simulazioni complete sempre disponibili"
     }
   ];
 
@@ -79,16 +77,16 @@ const Features = () => {
       <div className="container mx-auto px-4">
         <div className="text-center space-y-6 mb-16">
           <h2 className="text-4xl lg:text-5xl font-bold text-foreground">
-            As 5 Competências do 
+            Le 4 competenze della 
             <span className="bg-gradient-hero bg-clip-text text-transparent"> CILS B1</span>
           </h2>
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Treine todas as habilidades exigidas no exame oficial com simulados 
-            completos e exercícios específicos para cada competência.
+            Allena tutte le abilità richieste dall'esame ufficiale con simulazioni 
+            complete ed esercizi mirati.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 mb-20">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
           {skills.map((skill, index) => (
             <Card key={index} className="group hover:shadow-elegant transition-smooth cursor-pointer">
               <CardHeader className="text-center space-y-4">
@@ -108,7 +106,7 @@ const Features = () => {
 
         <div className="space-y-12">
           <h3 className="text-3xl font-bold text-center text-foreground">
-            Recursos Premium
+            Funzionalità Premium
           </h3>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -129,9 +127,11 @@ const Features = () => {
         </div>
 
         <div className="text-center mt-16">
-          <Button variant="feature" size="lg" className="text-lg px-8 py-6">
-            Testar Todas as Funcionalidades
-          </Button>
+          <Link to="/piani">
+            <Button variant="feature" size="lg" className="text-lg px-8 py-6">
+              {t("tryAllFeatures")}
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

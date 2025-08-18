@@ -11,6 +11,10 @@ import Dashboard from "./pages/Dashboard";
 import Plans from "./pages/Plans";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
+import Demo from "./pages/Demo";
+import FreeTraining from "./pages/FreeTraining";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,12 +28,16 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/demo" element={<Demo />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registrazione" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/allenamento-gratuito" element={<FreeTraining />} />
             <Route path="/piani" element={<Plans />} />
             <Route path="/chi-siamo" element={<About />} />
             <Route path="/contatti" element={<Contact />} />
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/termini" element={<Terms />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -20,9 +20,6 @@ const Plans = () => {
               Scegli il piano perfetto per la tua preparazione CILS B1 Cittadinanza. 
               Prezzi trasparenti in Euro, con garanzia di soddisfazione.
             </p>
-            <div className="flex justify-center">
-              <LanguageSelector variant="full" />
-            </div>
           </div>
         </div>
         <Pricing />

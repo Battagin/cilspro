@@ -33,6 +33,15 @@ export interface Translations {
   footerDescription: string;
   termsOfService: string;
   privacyPolicy: string;
+  platform: string;
+  support: string;
+  features: string;
+  exercises: string;
+  simulations: string;
+  helpCenter: string;
+  faq: string;
+  blog: string;
+  allRightsReserved: string;
   
   // Common
   loading: string;
@@ -86,9 +95,18 @@ export const translations: Record<string, Translations> = {
     bestValue: "Più Conveniente",
     
     // Footer
-    footerDescription: "Preparazione professionale CILS B1 per la cittadinanza italiana. Sede: Vicenza, Italia.",
-    termsOfService: "Termini di Servizio",
-    privacyPolicy: "Privacy Policy",
+    footerDescription: "La piattaforma più completa per la preparazione all'esame CILS B1 Cittadinanza. Ottieni la tua cittadinanza con sicurezza.",
+    termsOfService: "Termini d'uso",
+    privacyPolicy: "Privacy",
+    platform: "Piattaforma",
+    support: "Supporto",
+    features: "Funzionalità",
+    exercises: "Esercizi",
+    simulations: "Simulazioni",
+    helpCenter: "Centro assistenza",
+    faq: "FAQ",
+    blog: "Blog",
+    allRightsReserved: "© 2025 CILSpro. Tutti i diritti riservati.",
     
     // Common
     loading: "Caricamento...",
@@ -141,9 +159,18 @@ export const translations: Record<string, Translations> = {
     bestValue: "Best Value",
     
     // Footer
-    footerDescription: "Professional CILS B1 preparation for Italian citizenship. Location: Vicenza, Italy.",
+    footerDescription: "The most complete platform for CILS B1 Citizenship exam preparation. Get your citizenship with confidence.",
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
+    platform: "Platform",
+    support: "Support",
+    features: "Features",
+    exercises: "Exercises",
+    simulations: "Simulations",
+    helpCenter: "Help Center",
+    faq: "FAQ",
+    blog: "Blog",
+    allRightsReserved: "© 2025 CILSpro. All rights reserved.",
     
     // Common
     loading: "Loading...",
@@ -196,9 +223,18 @@ export const translations: Record<string, Translations> = {
     bestValue: "Melhor Valor",
     
     // Footer
-    footerDescription: "Preparação profissional CILS B1 para cidadania italiana. Localização: Vicenza, Itália.",
-    termsOfService: "Termos de Serviço",
+    footerDescription: "A plataforma mais completa para preparação do exame CILS B1 Cidadania. Obtenha sua cidadania com segurança.",
+    termsOfService: "Termos de Serviço", 
     privacyPolicy: "Política de Privacidade",
+    platform: "Plataforma",
+    support: "Suporte",
+    features: "Recursos",
+    exercises: "Exercícios",
+    simulations: "Simulações",
+    helpCenter: "Central de ajuda",
+    faq: "FAQ",
+    blog: "Blog",
+    allRightsReserved: "© 2025 CILSpro. Todos os direitos reservados.",
     
     // Common
     loading: "Carregando...",

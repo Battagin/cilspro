@@ -18,12 +18,12 @@ const Pricing = () => {
         "Feedback di base",
         "Progresso limitato"
       ],
-      buttonText: "Inizia Gratis",
+      buttonText: "Inizia gratis",
       buttonVariant: "outline" as const,
       popular: false
     },
     {
-      name: "Mensile",
+      name: t("monthly"),
       price: "15",
       period: "/mese",
       description: "Preparazione completa per l'approvazione",
@@ -35,12 +35,12 @@ const Pricing = () => {
         "Storico completo",
         "Supporto prioritario"
       ],
-      buttonText: t("subscribe"),
+      buttonText: `Abbonati (${t("monthly")})`,
       buttonVariant: "hero" as const,
       popular: true
     },
     {
-      name: "Annuale",
+      name: t("yearly"),
       price: "10",
       period: "/mese",
       originalPrice: "15",
@@ -54,7 +54,7 @@ const Pricing = () => {
         "Materiale extra in PDF",
         "Garanzia di approvazione"
       ],
-      buttonText: t("subscribe"),
+      buttonText: `Abbonati (${t("yearly")})`,
       buttonVariant: "feature" as const,
       popular: false,
       badge: t("bestValue")
@@ -85,7 +85,7 @@ const Pricing = () => {
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
                   <div className="bg-gradient-feature text-white px-4 py-2 rounded-full text-sm font-semibold flex items-center gap-2">
                     <Star className="w-4 h-4" />
-                    Mais Popular
+                    {t("mostPopular")}
                   </div>
                 </div>
               )}
