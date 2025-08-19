@@ -131,24 +131,86 @@ serve(async (req) => {
       }
     }
 
-    // 1) Trascrizione usando Whisper OpenAI (più affidabile di HF per ora)
+    // 1) Upload audio to Supabase Storage and get signed URL
+    const supabase = createSupabaseClient();
     const audioBuffer = await audioFile.arrayBuffer();
-    const audioFormData = new FormData();
-    audioFormData.append('file', new Blob([audioBuffer], { type: 'audio/webm' }), 'audio.webm');
-    audioFormData.append('model', 'whisper-1');
-    audioFormData.append('language', 'it');
+    const filename = `demo_${Date.now()}_${Math.random().toString(36).slice(2)}.webm`;
+    
+    // Ensure bucket exists
+    try {
+      await supabase.storage.createBucket('temp_audio', { public: false });
+    } catch (error) {
+      // Bucket might already exist, ignore error
+    }
+    
+    // Upload audio file
+    const { error: uploadError } = await supabase.storage
+      .from('temp_audio')
+      .upload(filename, audioBuffer, {
+        contentType: 'audio/webm',
+        upsert: false
+      });
+    
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      return new Response(JSON.stringify({ 
+        error: "Errore nel caricamento del file audio." 
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Get signed URL
+    const { data: signedData, error: signedError } = await supabase.storage
+      .from('temp_audio')
+      .createSignedUrl(filename, 600); // 10 minutes
+    
+    if (signedError || !signedData?.signedUrl) {
+      console.error('Signed URL error:', signedError);
+      return new Response(JSON.stringify({ 
+        error: "Errore nella generazione dell'URL del file." 
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
-    const transcribeResponse = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    // 2) Call HuggingFace ASR (Gradio API)
+    const hfUrl = Deno.env.get('HF_ASR_URL');
+    if (!hfUrl) {
+      return new Response(JSON.stringify({ 
+        error: "Configura HF_ASR_URL nelle impostazioni." 
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const hfHeaders: Record<string, string> = { 
+      'Content-Type': 'application/json' 
+    };
+    if (Deno.env.get('HF_API_KEY')) {
+      hfHeaders['Authorization'] = `Bearer ${Deno.env.get('HF_API_KEY')}`;
+    }
+
+    // Start transcription job
+    const transcribeResponse = await fetch(hfUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${Deno.env.get('OPENAI_API_KEY')}`,
-      },
-      body: audioFormData,
+      headers: hfHeaders,
+      body: JSON.stringify({
+        data: [
+          { 
+            path: signedData.signedUrl, 
+            meta: { _type: "gradio.FileData" } 
+          }
+        ]
+      })
     });
 
     if (!transcribeResponse.ok) {
       return new Response(JSON.stringify({ 
-        error: "Trascrizione non disponibile. Ripeti la registrazione." 
+        error: "Servizio di trascrizione non disponibile." 
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -156,7 +218,65 @@ serve(async (req) => {
     }
 
     const transcribeData = await transcribeResponse.json();
-    const transcript = transcribeData.text || "";
+    let eventId = transcribeData?.event_id || "";
+    
+    // Try to extract event ID from response
+    if (!eventId && typeof transcribeData === 'string') {
+      const match = transcribeData.match(/[a-f0-9\-]{8,}/i);
+      eventId = match ? match[0] : "";
+    }
+    
+    if (!eventId) {
+      return new Response(JSON.stringify({ 
+        error: "Impossibile ottenere EVENT_ID dal servizio di trascrizione." 
+      }), {
+        status: 502,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Poll for results
+    const basePollUrl = hfUrl.replace(/\/call\/predict$/, '/call/predict');
+    let transcript = "";
+    const maxAttempts = 30;
+    
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      try {
+        const pollResponse = await fetch(`${basePollUrl}/${eventId}`, {
+          method: 'GET'
+        });
+        
+        const pollText = await pollResponse.text();
+        let pollData;
+        
+        try {
+          pollData = JSON.parse(pollText);
+        } catch {
+          // Try to extract text from non-JSON response
+          const match = pollText.match(/"text"\s*:\s*"([^"]+)"/);
+          if (match) {
+            transcript = match[1];
+            break;
+          }
+          continue;
+        }
+        
+        const status = pollData?.status || pollData?.stage || "";
+        transcript = pollData?.output?.data?.[0]?.text || 
+                    pollData?.output?.data?.text || 
+                    pollData?.data?.text || 
+                    pollData?.transcription || 
+                    pollData?.text || "";
+        
+        if (/COMPLETE|SUCCESS|finished/i.test(status) || transcript) {
+          break;
+        }
+      } catch (error) {
+        console.error('Poll attempt failed:', error);
+      }
+    }
 
     if (!transcript) {
       return new Response(JSON.stringify({ 
