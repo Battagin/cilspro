@@ -17,33 +17,44 @@ serve(async (req) => {
       throw new Error('Texto é obrigatório')
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY não configurada')
+    const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
+    if (!elevenlabsApiKey) {
+      throw new Error('ELEVENLABS_API_KEY não configurada')
     }
 
-    // Use Google Cloud Text-to-Speech via Gemini
-    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${geminiApiKey}`, {
+    // Map voice names to ElevenLabs voice IDs (Italian voices)
+    const voiceIds = {
+      'alice': 'Xb7hH8MSUJpSbSDYk0k2', // Alice
+      'marco': 'TX3LPaxmHKxFdv7VOQHJ', // Liam (male voice)
+      'female': '9BWtsMINqrJLrRacOk9x', // Aria
+      'male': 'bIHbv24MWmeRgasZH58o'  // Will
+    }
+
+    const selectedVoiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.alice
+
+    // Generate speech using ElevenLabs
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
       method: 'POST',
       headers: {
+        'xi-api-key': elevenlabsApiKey,
         'Content-Type': 'application/json',
+        'Accept': 'audio/mpeg'
       },
       body: JSON.stringify({
-        input: { text },
-        voice: {
-          languageCode: 'it-IT',
-          name: voice === 'alice' ? 'it-IT-Wavenet-A' : 'it-IT-Wavenet-B',
-          ssmlGender: voice === 'alice' ? 'FEMALE' : 'MALE'
-        },
-        audioConfig: {
-          audioEncoding: 'MP3',
-          sampleRateHertz: 24000
+        text,
+        model_id: 'eleven_multilingual_v2',
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.75,
+          style: 0.0,
+          use_speaker_boost: true
         }
       })
     })
 
     if (!response.ok) {
-      // Fallback para mock de áudio se API não estiver disponível
+      console.error('ElevenLabs API error:', await response.text())
+      // Fallback para mock de áudio se API falhar
       const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
       return new Response(
         JSON.stringify({ audioContent: mockAudioBase64 }),
@@ -51,10 +62,14 @@ serve(async (req) => {
       )
     }
 
-    const data = await response.json()
-    
+    // Convert audio buffer to base64
+    const arrayBuffer = await response.arrayBuffer()
+    const base64Audio = btoa(
+      String.fromCharCode(...new Uint8Array(arrayBuffer))
+    )
+
     return new Response(
-      JSON.stringify({ audioContent: data.audioContent }),
+      JSON.stringify({ audioContent: base64Audio }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {

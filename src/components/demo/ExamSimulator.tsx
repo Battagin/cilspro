@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Clock, ChevronLeft, ChevronRight, Send } from 'lucide-react';
+import { Clock, ChevronLeft, ChevronRight, Send, SkipForward, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: string;
@@ -18,6 +19,7 @@ interface Exercise {
   prompt_it: string;
   text_it?: string;
   audio_url?: string;
+  audio_text?: string;
   timer_seconds: number;
   questions: Question[];
 }
@@ -35,6 +37,8 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
   const [writingText, setWritingText] = useState('');
   const [recordingData, setRecordingData] = useState<any>(null);
+  const [isAudioLoading, setIsAudioLoading] = useState(false);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -73,17 +77,74 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Audio management for listening exercises
+  // Audio management for listening exercises  
   useEffect(() => {
-    if (currentExercise?.type === 'ascolto' && currentExercise.audio_url) {
-      const audio = new Audio(currentExercise.audio_url);
-      setAudioPlayer(audio);
-      return () => {
-        audio.pause();
-        audio.src = '';
-      };
+    if (currentExercise?.type === 'ascolto') {
+      setAudioPlayer(null);
+      setAudioError(null);
     }
   }, [currentExercise]);
+
+  const generateAudio = async (text: string) => {
+    try {
+      setIsAudioLoading(true);
+      setAudioError(null);
+
+      const response = await supabase.functions.invoke('generate-tts', {
+        body: { 
+          text,
+          voice: 'alice' // Italian female voice
+        }
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'Errore generazione audio');
+      }
+
+      const audioData = response.data as { audioContent: string };
+      if (audioData?.audioContent) {
+        const audio = new Audio(`data:audio/mpeg;base64,${audioData.audioContent}`);
+        setAudioPlayer(audio);
+        return audio;
+      } else {
+        throw new Error('Audio non ricevuto');
+      }
+    } catch (error) {
+      console.error('Errore audio:', error);
+      setAudioError('Errore nel caricamento audio. Riprova più tardi.');
+      return null;
+    } finally {
+      setIsAudioLoading(false);
+    }
+  };
+
+  const playAudio = async () => {
+    if (!audioPlayer && currentExercise?.type === 'ascolto') {
+      // Generate audio from text if not already generated
+      const audioText = currentExercise.audio_text || currentExercise.prompt_it;
+      const newAudio = await generateAudio(audioText);
+      if (newAudio) {
+        newAudio.play();
+      }
+    } else if (audioPlayer) {
+      audioPlayer.play();
+    }
+  };
+
+  const pauseAudio = () => {
+    if (audioPlayer) {
+      audioPlayer.pause();
+    }
+  };
+
+  const replayAudio = async () => {
+    if (audioPlayer) {
+      audioPlayer.currentTime = 0;
+      audioPlayer.play();
+    } else {
+      await playAudio();
+    }
+  };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setAnswers(prev => ({
@@ -104,6 +165,15 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
     }
   };
 
+  const handlePrevExercise = () => {
+    if (currentExerciseIndex > 0) {
+      setCurrentExerciseIndex(prev => prev - 1);
+      setCurrentQuestionIndex(0);
+      setWritingText('');
+      setRecordingData(null);
+    }
+  };
+
   const handleNextExercise = () => {
     if (currentExercise.type === 'scrittura') {
       // Save writing text
@@ -121,6 +191,10 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
       setWritingText('');
       setRecordingData(null);
     }
+  };
+
+  const handleSkipExercise = () => {
+    handleNextExercise();
   };
 
   const handleSubmitExam = () => {
@@ -146,21 +220,31 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
     <div className="space-y-6">
       <div className="text-center">
         <p className="text-lg mb-4">{currentExercise.prompt_it}</p>
-        {audioPlayer && (
-          <div className="space-x-4">
-            <Button onClick={() => audioPlayer.play()}>
-              ▶ Ascolta
-            </Button>
-            <Button variant="outline" onClick={() => audioPlayer.pause()}>
-              ⏸ Pausa
-            </Button>
-            <Button variant="outline" onClick={() => {
-              audioPlayer.currentTime = 0;
-              audioPlayer.play();
-            }}>
-              🔄 Riascolta
-            </Button>
-          </div>
+        <div className="space-x-4">
+          <Button 
+            onClick={playAudio}
+            disabled={isAudioLoading}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isAudioLoading ? '🔄 Caricando...' : '▶ Ascolta'}
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={pauseAudio}
+            disabled={!audioPlayer || audioPlayer.paused}
+          >
+            ⏸ Pausa
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={replayAudio}
+            disabled={isAudioLoading}
+          >
+            🔄 Riascolta
+          </Button>
+        </div>
+        {audioError && (
+          <p className="text-red-600 text-sm mt-2">{audioError}</p>
         )}
       </div>
       {renderQuestions()}
@@ -301,25 +385,36 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
         {currentExercise.type === 'scrittura' && renderWritingExercise()}
         {currentExercise.type === 'produzione_orale' && renderSpeakingExercise()}
 
-        <div className="flex justify-between">
-          <Button
-            variant="outline"
-            onClick={() => setCurrentExerciseIndex(prev => Math.max(0, prev - 1))}
-            disabled={currentExerciseIndex === 0}
-          >
-            <ChevronLeft className="h-4 w-4 mr-2" />
-            Esercizio Precedente
-          </Button>
+        <div className="flex justify-between items-center">
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handlePrevExercise}
+              disabled={currentExerciseIndex === 0}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Precedente
+            </Button>
+            
+            <Button
+              variant="outline"
+              onClick={handleSkipExercise}
+              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+            >
+              <SkipForward className="h-4 w-4 mr-2" />
+              Salta
+            </Button>
+          </div>
 
           <Button onClick={handleNextExercise}>
             {isLastExercise ? (
               <>
                 <Send className="h-4 w-4 mr-2" />
-                Consegna Esame
+                Invia per Correzione
               </>
             ) : (
               <>
-                Prossimo Esercizio
+                Avanti
                 <ChevronRight className="h-4 w-4 ml-2" />
               </>
             )}
