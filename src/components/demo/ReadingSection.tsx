@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { BookOpen, Clock } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: number;
@@ -52,22 +53,18 @@ const ReadingSection: React.FC<ReadingSectionProps> = ({
   const calculateScore = async () => {
     // Use secure grading endpoint instead of client-side calculation
     try {
-      const response = await fetch('https://fbydiennwirsoccbngvt.supabase.co/functions/v1/grade-mcq', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+      const response = await supabase.functions.invoke('grade-mcq', {
+        body: {
           exercise_id: exercise.id,
           answers: answers
-        }),
+        },
       });
 
-      if (!response.ok) {
+      if (response.error) {
         throw new Error('Errore nella correzione');
       }
 
-      const result = await response.json();
+      const result = response.data;
       return result.score;
     } catch (error) {
       console.error('Erro ao avaliar respostas:', error);

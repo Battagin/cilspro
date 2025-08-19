@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Clock, Volume2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
   id: number;
@@ -13,12 +14,12 @@ interface Question {
 
 interface ListeningSectionProps {
   exercise: {
+    id: string;
     content: {
       audio_url: string;
       instructions: string;
       questions: Question[];
     };
-    answer_key?: Record<string, number>; // Optional for demo mode
   };
   onComplete: (answers: Record<string, number>, score: number) => void;
   timeLimit: number;
@@ -73,19 +74,27 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
     }));
   };
 
-  const calculateScore = () => {
-    // For demo mode without answer_key, return a mock score
-    if (!exercise.answer_key) {
-      return Math.floor(Math.random() * 30) + 60; // Random score between 60-89
-    }
-    
-    let correct = 0;
-    Object.entries(exercise.answer_key).forEach(([questionId, correctAnswer]) => {
-      if (answers[questionId] === correctAnswer) {
-        correct++;
+  const calculateScore = async () => {
+    // Use secure grading endpoint instead of client-side calculation
+    try {
+      const response = await supabase.functions.invoke('grade-mcq', {
+        body: {
+          exercise_id: exercise.id,
+          answers: answers
+        },
+      });
+
+      if (response.error) {
+        throw new Error('Errore nella correzione');
       }
-    });
-    return Math.round((correct / Object.keys(exercise.answer_key).length) * 100);
+
+      const result = response.data;
+      return result.score;
+    } catch (error) {
+      console.error('Erro ao avaliar respostas:', error);
+      // Fallback to mock score for demo
+      return Math.floor(Math.random() * 30) + 60;
+    }
   };
 
   const handleSubmit = async () => {
@@ -102,9 +111,7 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const allQuestionsAnswered = exercise.answer_key 
-    ? Object.keys(exercise.answer_key).every(questionId => answers.hasOwnProperty(questionId))
-    : exercise.content.questions.every(q => answers.hasOwnProperty(q.id.toString()));
+  const allQuestionsAnswered = exercise.content.questions.every(q => answers.hasOwnProperty(q.id.toString()));
 
   return (
     <Card className="w-full">
