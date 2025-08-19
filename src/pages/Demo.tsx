@@ -65,152 +65,117 @@ const Demo = () => {
 
   const loadExercises = async () => {
     try {
-      // First try the list endpoint
-      let response = await fetch('/api/demo/list');
-      let data;
-      
-      if (!response.ok) {
-        // If list fails, try force-generate as fallback
-        console.log('List endpoint failed, trying force-generate...');
-        response = await fetch('/api/demo/force-generate', { method: 'POST' });
-      }
-      
-      if (response.ok) {
-        const text = await response.text();
-        try {
-          data = JSON.parse(text);
-        } catch (parseError) {
-          throw new Error('Invalid JSON response');
-        }
-      } else {
-        throw new Error('Failed to load exercises');
-      }
+      setIsLoading(true);
 
-      // If we still don't have items, use hardcoded fallback
-      if (!data?.items || data.items.length === 0) {
-        data = {
-          items: [
-            {
-              id: "fallback_ascolto",
-              type: "ascolto", 
-              title: "Informazioni al Comune",
-              prompt_it: "Ascolta l'audio e rispondi alle domande.",
-              audio_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
-              timer_seconds: 480,
-              questions: [
-                { id: "q1", text: "Quando riapre l'ufficio?", options: ["A) 9:00", "B) 11:00", "C) 14:00", "D) 16:00"] },
-                { id: "q2", text: "Per urgenze bisogna:", options: ["A) Telefonare", "B) Scrivere e-mail", "C) Andare di persona", "D) Compilare modulo"] }
-              ]
+      // Load one exercise per skill from Supabase Edge Function (Gemini-based)
+      const skills = ['ascolto', 'lettura', 'scrittura', 'produzione_orale'] as const;
+
+      const promises = skills.map((skill) =>
+        supabase.functions.invoke('generate-exercises', {
+          body: { skill_type: skill },
+        })
+      );
+
+      const results = await Promise.all(promises);
+
+      const items = results
+        .map((res, idx) => {
+          if (res.error) {
+            console.warn(`Errore caricando ${skills[idx]}:`, res.error);
+            return null;
+          }
+          const exercise = (res.data as any)?.exercise;
+          if (!exercise) return null;
+          return {
+            id: exercise.id,
+            skill_type: exercise.type,
+            title: exercise.title,
+            content: {
+              prompt_it: exercise.prompt_it,
+              audio_url: exercise.audio_url,
+              text_it: exercise.text_it,
+              timer_seconds: exercise.timer_seconds,
+              questions: exercise.questions || [],
+              min_words: exercise.min_words,
+              max_words: exercise.max_words,
             },
-            {
-              id: "fallback_lettura",
-              type: "lettura",
-              title: "Avviso dell'Ufficio Anagrafe", 
-              prompt_it: "Leggi il testo e rispondi alle domande.",
-              text_it: "AVVISO: L'ufficio anagrafe sarà chiuso lunedì mattina per aggiornamento dei sistemi. Riapertura alle 14:00. Per urgenze scrivere a anagrafe@comune.example.it oppure telefonare al numero verde.",
-              timer_seconds: 600,
-              questions: [
-                { id: "q1", text: "Quando riapre l'ufficio?", options: ["A) 9:00", "B) 11:00", "C) 14:00", "D) 16:00"] },
-                { id: "q2", text: "Per urgenze si deve:", options: ["A) Telefonare", "B) Scrivere e-mail", "C) Presentarsi", "D) Compilare modulo"] }
-              ]
-            },
-            {
-              id: "fallback_scrittura",
-              type: "scrittura",
-              title: "Email di richiesta informazioni", 
-              prompt_it: "Scrivi una e-mail (90–120 parole) per chiedere quali documenti servono per richiedere la residenza a Vicenza.",
-              timer_seconds: 1200,
-              questions: []
-            },
-            {
-              id: "fallback_orale",
-              type: "produzione_orale",
-              title: "Presentazione personale",
-              prompt_it: "Registra un audio di 2 minuti: presentati, descrivi il tuo lavoro/studio e una difficoltà che hai superato vivendo in Italia.",
-              timer_seconds: 600,
-              questions: []
-            }
-          ]
-        };
+          };
+        })
+        .filter(Boolean) as DemoExercise[];
+
+      if (!items || items.length === 0) {
+        throw new Error('Nessun esercizio disponibile');
       }
 
-      // Transform API data to match component interface
-      const transformedExercises = data.items.map((item: any) => ({
-        id: item.id,
-        skill_type: item.type,
-        title: item.title,
-        content: {
-          prompt_it: item.prompt_it,
-          audio_url: item.audio_url,
-          text_it: item.text_it,
-          timer_seconds: item.timer_seconds,
-          questions: item.questions || [],
-          min_words: item.min_words,
-          max_words: item.max_words
-        }
-      }));
+      setExercises(items);
 
-      setExercises(transformedExercises);
+      toast({
+        title: 'Demo caricata',
+        description: 'Esercizi generati con Gemini.'
+      });
     } catch (error) {
       console.error('Error loading exercises:', error);
-      
-      // Hardcoded fallback that always works
-      const fallbackExercises = [
+
+      // Hardcoded fallback che funziona sempre
+      const fallbackExercises: DemoExercise[] = [
         {
-          id: "hardcoded_ascolto",
-          skill_type: "ascolto",
-          title: "Informazioni al Comune",
+          id: 'hardcoded_ascolto',
+          skill_type: 'ascolto',
+          title: 'Informazioni al Comune',
           content: {
             prompt_it: "Ascolta l'audio e rispondi alle domande.",
-            audio_url: "https://www.soundjay.com/misc/sounds/bell-ringing-05.wav",
+            audio_url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
             timer_seconds: 480,
             questions: [
-              { id: "q1", text: "Quando riapre l'ufficio?", options: ["A) 9:00", "B) 11:00", "C) 14:00", "D) 16:00"] },
-              { id: "q2", text: "Per urgenze bisogna:", options: ["A) Telefonare", "B) Scrivere e-mail", "C) Andare di persona", "D) Compilare modulo"] }
-            ]
-          }
+              { id: 'q1', text: "Quando riapre l'ufficio?", options: ['A) 9:00', 'B) 11:00', 'C) 14:00', 'D) 16:00'] },
+              { id: 'q2', text: 'Per urgenze bisogna:', options: ['A) Telefonare', 'B) Scrivere e-mail', 'C) Andare di persona', 'D) Compilare modulo'] },
+            ],
+          },
         },
         {
-          id: "hardcoded_lettura",
-          skill_type: "lettura",
+          id: 'hardcoded_lettura',
+          skill_type: 'lettura',
           title: "Avviso dell'Ufficio Anagrafe",
           content: {
-            prompt_it: "Leggi il testo e rispondi alle domande.",
-            text_it: "AVVISO: L'ufficio anagrafe sarà chiuso lunedì mattina per aggiornamento dei sistemi. Riapertura alle 14:00. Per urgenze scrivere a anagrafe@comune.example.it oppure telefonare al numero verde.",
+            prompt_it: 'Leggi il testo e rispondi alle domande.',
+            text_it:
+              "AVVISO: L'ufficio anagrafe sarà chiuso lunedì mattina per aggiornamento dei sistemi. Riapertura alle 14:00. Per urgenze scrivere a anagrafe@comune.example.it oppure telefonare al numero verde.",
             timer_seconds: 600,
             questions: [
-              { id: "q1", text: "Quando riapre l'ufficio?", options: ["A) 9:00", "B) 11:00", "C) 14:00", "D) 16:00"] },
-              { id: "q2", text: "Per urgenze si deve:", options: ["A) Telefonare", "B) Scrivere e-mail", "C) Presentarsi", "D) Compilare modulo"] }
-            ]
-          }
+              { id: 'q1', text: "Quando riapre l'ufficio?", options: ['A) 9:00', 'B) 11:00', 'C) 14:00', 'D) 16:00'] },
+              { id: 'q2', text: 'Per urgenze si deve:', options: ['A) Telefonare', 'B) Scrivere e-mail', 'C) Presentarsi', 'D) Compilare modulo'] },
+            ],
+          },
         },
         {
-          id: "hardcoded_scrittura",
-          skill_type: "scrittura",
-          title: "Email di richiesta informazioni",
+          id: 'hardcoded_scrittura',
+          skill_type: 'scrittura',
+          title: 'Email di richiesta informazioni',
           content: {
-            prompt_it: "Scrivi una e-mail (90–120 parole) per chiedere quali documenti servono per richiedere la residenza a Vicenza.",
+            prompt_it:
+              'Scrivi una e-mail (90–120 parole) per chiedere quali documenti servono per richiedere la residenza a Vicenza.',
             timer_seconds: 1200,
-            questions: []
-          }
+            questions: [],
+          },
         },
         {
-          id: "hardcoded_orale",
-          skill_type: "produzione_orale",
-          title: "Presentazione personale",
+          id: 'hardcoded_orale',
+          skill_type: 'produzione_orale',
+          title: 'Presentazione personale',
           content: {
-            prompt_it: "Registra un audio di 2 minuti: presentati, descrivi il tuo lavoro/studio e una difficoltà che hai superato vivendo in Italia.",
+            prompt_it:
+              'Registra un audio di 2 minuti: presentati, descrivi il tuo lavoro/studio e una difficoltà che hai superato vivendo in Italia.',
             timer_seconds: 600,
-            questions: []
-          }
-        }
+            questions: [],
+          },
+        },
       ];
-      
+
       setExercises(fallbackExercises);
-      
+
       toast({
-        title: "Demo caricata",
-        description: "Usando esercizi demo predefiniti."
+        title: 'Demo caricata',
+        description: 'Usando esercizi demo predefiniti.'
       });
     } finally {
       setIsLoading(false);
@@ -279,8 +244,11 @@ const Demo = () => {
   };
 
   const restartDemo = () => {
+    setShowSimulator(false);
     setCurrentStep(0);
     setResults([]);
+    setIsLoading(true);
+    loadExercises();
   };
 
   if (loading || isLoading) {
@@ -337,7 +305,7 @@ const Demo = () => {
   }
 
   // Show results if all exercises completed
-  if ((results.length === exercises.length && exercises.length > 0) || (results && !showSimulator)) {
+  if (!showSimulator && exercises.length > 0 && results.length === exercises.length) {
     return (
       <div className="min-h-screen">
         <Header />
