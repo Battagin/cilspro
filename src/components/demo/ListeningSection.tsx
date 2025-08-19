@@ -7,8 +7,8 @@ import { Play, Pause, Clock, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Question {
-  id: number;
-  question: string;
+  id: string;
+  text: string;
   options: string[];
 }
 
@@ -16,12 +16,12 @@ interface ListeningSectionProps {
   exercise: {
     id: string;
     content: {
-      audio_url: string;
-      instructions: string;
-      questions: Question[];
+      audio_url?: string;
+      prompt_it: string;
+      questions?: Question[];
     };
   };
-  onComplete: (answers: Record<string, number>, score: number) => void;
+  onComplete: (answers: Record<string, string>, score: number) => void;
   timeLimit: number;
 }
 
@@ -30,7 +30,7 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
   onComplete, 
   timeLimit 
 }) => {
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>({});
   const [playCount, setPlayCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [timeLeft, setTimeLeft] = useState(timeLimit);
@@ -67,31 +67,35 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
     setIsPlaying(false);
   };
 
-  const handleAnswerChange = (questionId: string, optionIndex: number) => {
+  const handleAnswerChange = (questionId: string, optionValue: string) => {
     setAnswers(prev => ({
       ...prev,
-      [questionId]: optionIndex
+      [questionId]: optionValue
     }));
   };
 
   const calculateScore = async () => {
-    // Use secure grading endpoint instead of client-side calculation
     try {
-      const response = await supabase.functions.invoke('grade-mcq', {
-        body: {
+      const response = await fetch('/api/demo/grade-mcq', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           exercise_id: exercise.id,
           answers: answers
-        },
+        }),
       });
 
-      if (response.error) {
-        throw new Error('Errore nella correzione');
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error || 'Errore nella correzione');
       }
 
-      const result = response.data;
       return result.score;
     } catch (error) {
-      console.error('Erro ao avaliar respostas:', error);
+      console.error('Error grading answers:', error);
       // Fallback to mock score for demo
       return Math.floor(Math.random() * 30) + 60;
     }
@@ -111,7 +115,8 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const allQuestionsAnswered = exercise.content.questions.every(q => answers.hasOwnProperty(q.id.toString()));
+  const questions = exercise.content.questions || [];
+  const allQuestionsAnswered = questions.every(q => answers.hasOwnProperty(q.id));
 
   return (
     <Card className="w-full">
@@ -128,17 +133,19 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-muted-foreground">{exercise.content.instructions}</p>
+        <p className="text-muted-foreground">{exercise.content.prompt_it}</p>
         
         <div className="flex flex-col items-center space-y-4 p-6 bg-muted/50 rounded-lg">
-          <audio
-            ref={audioRef}
-            onEnded={handleAudioEnded}
-            preload="metadata"
-          >
-            <source src={exercise.content.audio_url} type="audio/mpeg" />
-            Il tuo browser non supporta l'elemento audio.
-          </audio>
+          {exercise.content.audio_url && (
+            <audio
+              ref={audioRef}
+              onEnded={handleAudioEnded}
+              preload="metadata"
+            >
+              <source src={exercise.content.audio_url} type="audio/mpeg" />
+              Il tuo browser non supporta l'elemento audio.
+            </audio>
+          )}
           
           <div className="flex items-center gap-4">
             {!isPlaying ? (
@@ -164,19 +171,19 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
         </div>
 
         <div className="space-y-6">
-          {exercise.content.questions.map((question, index) => (
+          {questions.map((question, index) => (
             <div key={question.id} className="space-y-3">
               <h4 className="font-medium">
-                {index + 1}. {question.question}
+                {index + 1}. {question.text}
               </h4>
               <RadioGroup
-                value={answers[question.id]?.toString() || ""}
-                onValueChange={(value) => handleAnswerChange(question.id.toString(), parseInt(value))}
+                value={answers[question.id] || ""}
+                onValueChange={(value) => handleAnswerChange(question.id, value)}
               >
                 {question.options.map((option, optionIndex) => (
                   <div key={optionIndex} className="flex items-center space-x-2">
                     <RadioGroupItem 
-                      value={optionIndex.toString()} 
+                      value={option.charAt(0)} 
                       id={`q${question.id}-${optionIndex}`} 
                     />
                     <Label 

@@ -288,6 +288,33 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
+        {/* Demo CTA */}
+        <Card className="mb-8 shadow-elegant bg-gradient-to-r from-primary/10 via-primary/5 to-background">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="text-center md:text-left">
+                <h3 className="text-2xl font-bold text-foreground mb-2">
+                  🎯 Inizia la Demo CILS B1
+                </h3>
+                <p className="text-muted-foreground mb-2">
+                  Allenati gratuitamente una volta al giorno per ogni competenza.
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Prova tutte e 4 le competenze dell'esame CILS B1 Cittadinanza
+                </p>
+              </div>
+              <Button 
+                size="lg" 
+                className="shrink-0"
+                onClick={() => navigate('/demo')}
+              >
+                <Play className="w-5 h-5 mr-2" />
+                Inizia la Demo CILS B1
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Available Simulations */}
         <Card className="shadow-elegant">
           <CardHeader>

@@ -10,9 +10,9 @@ import { useAuth } from '@/contexts/AuthContext';
 interface WritingSectionProps {
   exercise: {
     content: {
-      instructions: string;
-      min_words: number;
-      max_words: number;
+      prompt_it: string;
+      min_words?: number;
+      max_words?: number;
     };
   };
   onComplete: (text: string, evaluation: any) => void;
@@ -61,16 +61,22 @@ const WritingSection: React.FC<WritingSectionProps> = ({
     setIsEvaluating(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('eval-scrittura', {
-        body: { 
+      const response = await fetch('/api/eval/scrittura', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           user_id: user?.id,
           text,
-          consegna: exercise.content.instructions
-        }
+          consegna: exercise.content.prompt_it
+        }),
       });
 
-      if (error) {
-        if (error.message?.includes('Limite giornaliero')) {
+      const data = await response.json();
+      
+      if (!response.ok) {
+        if (data.error?.includes('Limite giornaliero')) {
           toast({
             title: "Limite raggiunto",
             description: "Limite giornaliero raggiunto nella versione gratuita. Passa al piano Premium per accesso illimitato.",
@@ -78,8 +84,9 @@ const WritingSection: React.FC<WritingSectionProps> = ({
           });
           return;
         }
-        throw error;
+        throw new Error(data.error || 'Errore nella valutazione');
       }
+
 
       setIsCompleted(true);
       onComplete(text, data);
@@ -108,8 +115,10 @@ const WritingSection: React.FC<WritingSectionProps> = ({
   };
 
   const wordCount = getWordCount();
-  const isMinimumReached = wordCount >= exercise.content.min_words;
-  const isOverMax = wordCount > exercise.content.max_words;
+  const minWords = exercise.content.min_words || 90;
+  const maxWords = exercise.content.max_words || 120;
+  const isMinimumReached = wordCount >= minWords;
+  const isOverMax = wordCount > maxWords;
 
   return (
     <Card className="w-full">
@@ -126,7 +135,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-muted-foreground">{exercise.content.instructions}</p>
+        <p className="text-muted-foreground">{exercise.content.prompt_it}</p>
         
         <div className="space-y-4">
           <div className="flex items-center justify-between text-sm">
@@ -141,7 +150,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({
                   ? 'text-red-600' 
                   : 'text-orange-600'
             }`}>
-              {exercise.content.min_words}-{exercise.content.max_words} parole
+              {minWords}-{maxWords} parole
             </div>
           </div>
           
@@ -155,7 +164,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({
           
           {isOverMax && (
             <p className="text-sm text-red-600">
-              Hai superato il limite massimo di {exercise.content.max_words} parole.
+              Hai superato il limite massimo di {maxWords} parole.
             </p>
           )}
         </div>

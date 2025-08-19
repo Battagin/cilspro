@@ -9,8 +9,8 @@ import { useAuth } from '@/contexts/AuthContext';
 interface SpeakingSectionProps {
   exercise: {
     content: {
-      instructions: string;
-      duration_seconds: number;
+      prompt_it: string;
+      timer_seconds?: number;
     };
   };
   onComplete: (transcription: string, evaluation: any) => void;
@@ -50,7 +50,8 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
     if (isRecording) {
       const timer = setInterval(() => {
         setRecordingTime(prev => {
-          if (prev >= exercise.content.duration_seconds) {
+          const maxDuration = exercise.content.timer_seconds || 120;
+          if (prev >= maxDuration) {
             stopRecording();
             return prev;
           }
@@ -59,7 +60,7 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
       }, 1000);
       return () => clearInterval(timer);
     }
-  }, [isRecording, exercise.content.duration_seconds]);
+  }, [isRecording, exercise.content.timer_seconds]);
 
   const startRecording = async () => {
     try {
@@ -125,25 +126,28 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
       // Create FormData with the audio file
       const formData = new FormData();
       formData.append('file', audioBlob, 'audio.webm');
-      formData.append('consegna', exercise.content.instructions);
+      formData.append('consegna', exercise.content.prompt_it);
       if (user?.id) {
         formData.append('user_id', user.id);
       }
 
-      const { data, error } = await supabase.functions.invoke('eval-orale', {
+      const response = await fetch('/api/eval/orale', {
+        method: 'POST',
         body: formData
       });
 
-      if (error) {
-        if (error.message?.includes('Limite giornaliero')) {
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (data.error?.includes('Limite giornaliero')) {
           toast({
-            title: "Limite raggiunto",
+            title: "Limite raggiunto", 
             description: "Limite giornaliero raggiunto nella versione gratuita. Passa al piano Premium per accesso illimitato.",
             variant: "destructive"
           });
           return;
         }
-        throw error;
+        throw new Error(data.error || 'Errore nella valutazione');
       }
 
       setTranscription(data.transcript || '');
@@ -173,7 +177,8 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const canRecord = recordingTime < exercise.content.duration_seconds && !isCompleted;
+  const maxDuration = exercise.content.timer_seconds || 120;
+  const canRecord = recordingTime < maxDuration && !isCompleted;
 
   return (
     <Card className="w-full">
@@ -190,7 +195,7 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-muted-foreground">{exercise.content.instructions}</p>
+        <p className="text-muted-foreground">{exercise.content.prompt_it}</p>
         
         <div className="flex flex-col items-center space-y-6 p-8 bg-muted/50 rounded-lg">
           <div className="text-center space-y-2">
@@ -198,7 +203,7 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
               {formatTime(recordingTime)}
             </div>
             <div className="text-sm text-muted-foreground">
-              Tempo massimo: {formatTime(exercise.content.duration_seconds)}
+              Tempo massimo: {formatTime(maxDuration)}
             </div>
           </div>
           

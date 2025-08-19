@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useLanguage } from "@/hooks/useLanguage";
@@ -6,11 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Headphones, BookOpen, PenTool, Mic, Clock, ArrowRight, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 import ListeningSection from '@/components/demo/ListeningSection';
 import ReadingSection from '@/components/demo/ReadingSection';
@@ -36,8 +38,9 @@ interface SkillResult {
 
 const Demo = () => {
   const { t } = useLanguage();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   const [exercises, setExercises] = useState<DemoExercise[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -47,31 +50,51 @@ const Demo = () => {
 
   const skillOrder = ['ascolto', 'lettura', 'scrittura', 'produzione_orale'];
   const timeLimits = {
-    ascolto: 900, // 15 minuti
-    lettura: 1200, // 20 minuti
-    scrittura: 1800, // 30 minuti
+    ascolto: 480, // 8 minuti
+    lettura: 600, // 10 minuti  
+    scrittura: 1200, // 20 minuti
     produzione_orale: 600 // 10 minuti
   };
 
+  // Auth guard
   useEffect(() => {
-    loadExercises();
-  }, []);
+    if (!loading && !user) {
+      navigate('/login?redirect=/demo');
+    }
+  }, [user, loading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      loadExercises();
+    }
+  }, [user]);
 
   const loadExercises = async () => {
     try {
-      const { data, error } = await supabase
-        .from('demo_exercises_public')
-        .select('*')
-        .order('skill_type');
+      const response = await fetch('/api/demo/list');
+      const data = await response.json();
 
-      if (error) throw error;
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load exercises');
+      }
 
-      // Sort exercises by skill order
-      const sortedExercises = skillOrder.map(skill => 
-        data.find(ex => ex.skill_type === skill)
-      ).filter(Boolean) as DemoExercise[];
+      // Transform API data to match component interface
+      const transformedExercises = data.items.map((item: any) => ({
+        id: item.id,
+        skill_type: item.type,
+        title: item.title,
+        content: {
+          prompt_it: item.prompt_it,
+          audio_url: item.audio_url,
+          text_it: item.text_it,
+          timer_seconds: item.timer_seconds,
+          questions: item.questions || [],
+          min_words: item.min_words,
+          max_words: item.max_words
+        }
+      }));
 
-      setExercises(sortedExercises);
+      setExercises(transformedExercises);
     } catch (error) {
       console.error('Error loading exercises:', error);
       toast({
@@ -137,15 +160,54 @@ const Demo = () => {
     setResults([]);
   };
 
-  if (isLoading) {
+  if (loading || isLoading) {
     return (
       <div className="min-h-screen">
         <Header />
         <main className="pt-24">
-          <div className="container mx-auto px-4 py-12">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Caricamento simulazione...</p>
+          <div className="container mx-auto px-4 py-12 max-w-4xl">
+            <div className="space-y-6">
+              <Skeleton className="h-12 w-3/4 mx-auto" />
+              <Skeleton className="h-6 w-1/2 mx-auto" />
+              <div className="grid gap-6">
+                <Skeleton className="h-64 w-full" />
+                <Skeleton className="h-64 w-full" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated
+  if (!user) {
+    return null;
+  }
+
+  // Show empty state if no exercises
+  if (!isLoading && exercises.length === 0) {
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="pt-24">
+          <div className="container mx-auto px-4 py-12 max-w-4xl">
+            <div className="text-center space-y-6">
+              <h1 className="text-4xl lg:text-5xl font-bold text-foreground">
+                Demo CILS B1
+              </h1>
+              <div className="bg-muted/50 p-8 rounded-xl">
+                <h2 className="text-2xl font-bold text-foreground mb-4">
+                  Nessun esercizio demo disponibile
+                </h2>
+                <p className="text-muted-foreground mb-6">
+                  Riprova più tardi.
+                </p>
+                <Button onClick={() => navigate('/dashboard')} variant="outline">
+                  Torna al Dashboard
+                </Button>
+              </div>
             </div>
           </div>
         </main>
@@ -187,17 +249,19 @@ const Demo = () => {
           </div>
 
           {/* Progress indicator */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium">
-                Progresso: {currentStep + 1} di {exercises.length}
-              </span>
-              <span className="text-sm text-muted-foreground">
-                {Math.round(((currentStep + 1) / exercises.length) * 100)}%
-              </span>
+          {exercises.length > 0 && (
+            <div className="mb-8">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm font-medium">
+                  Progresso: {results.length} di {exercises.length}
+                </span>
+                <span className="text-sm text-muted-foreground">
+                  {exercises.length > 0 ? Math.round((results.length / exercises.length) * 100) : 0}%
+                </span>
+              </div>
+              <Progress value={exercises.length > 0 ? (results.length / exercises.length) * 100 : 0} />
             </div>
-            <Progress value={((currentStep + 1) / exercises.length) * 100} />
-          </div>
+          )}
 
           {/* Step indicator */}
           <div className="flex justify-center mb-8">
@@ -240,28 +304,28 @@ const Demo = () => {
                 <ListeningSection
                   exercise={currentExercise}
                   onComplete={handleStepComplete}
-                  timeLimit={timeLimits.ascolto}
+                  timeLimit={currentExercise.content?.timer_seconds || timeLimits.ascolto}
                 />
               )}
               {currentSkill === 'lettura' && (
                 <ReadingSection
                   exercise={currentExercise}
                   onComplete={handleStepComplete}
-                  timeLimit={timeLimits.lettura}
+                  timeLimit={currentExercise.content?.timer_seconds || timeLimits.lettura}
                 />
               )}
               {currentSkill === 'scrittura' && (
                 <WritingSection
                   exercise={currentExercise}
                   onComplete={handleStepComplete}
-                  timeLimit={timeLimits.scrittura}
+                  timeLimit={currentExercise.content?.timer_seconds || timeLimits.scrittura}
                 />
               )}
               {currentSkill === 'produzione_orale' && (
                 <SpeakingSection
                   exercise={currentExercise}
                   onComplete={handleStepComplete}
-                  timeLimit={timeLimits.produzione_orale}
+                  timeLimit={currentExercise.content?.timer_seconds || timeLimits.produzione_orale}
                 />
               )}
             </div>
