@@ -1,1 +1,4 @@
 project_id = "fbydiennwirsoccbngvt"
+
+[functions.grade-mcq]
+verify_jwt = false

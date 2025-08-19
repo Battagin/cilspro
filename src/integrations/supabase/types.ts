@@ -46,7 +46,6 @@ export type Database = {
       }
       demo_exercises: {
         Row: {
-          answer_key: Json
           content: Json
           created_at: string
           id: string
@@ -55,7 +54,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          answer_key: Json
           content: Json
           created_at?: string
           id?: string
@@ -64,7 +62,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          answer_key?: Json
           content?: Json
           created_at?: string
           id?: string
