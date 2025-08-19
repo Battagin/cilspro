@@ -13,7 +13,7 @@ const predefinedExercises = {
     title: "Conversazione al Bar",
     prompt_it: "Ascolta il dialogo e rispondi alle domande.",
     audio_text: "Marco: Buongiorno, vorrei un cappuccino e un cornetto. Barista: Subito! Desidera altro? Marco: No grazie, quanto costa? Barista: Sono 3 euro e 50. Marco: Ecco a lei. Barista: Grazie, arrivederci!",
-    timer_seconds: 300,
+    timer_seconds: 480,
     questions: [
       {
         id: "q1",

@@ -20,6 +20,7 @@ import WritingSection from '@/components/demo/WritingSection';
 import SpeakingSection from '@/components/demo/SpeakingSection';
 import DemoResults from '@/components/demo/DemoResults';
 import { ExamSimulator } from '@/components/demo/ExamSimulator';
+import { ExamResults } from '@/components/demo/ExamResults';
 
 interface DemoExercise {
   id: string;
@@ -205,7 +206,7 @@ const Demo = () => {
   };
 
   const handleSimulatorComplete = (examResults: any) => {
-    setResults(examResults);
+    setResults(examResults.exercises || []);
     setShowSimulator(false);
   };
 
@@ -304,14 +305,14 @@ const Demo = () => {
     );
   }
 
-  // Show results if all exercises completed
-  if (!showSimulator && exercises.length > 0 && results.length === exercises.length) {
+  // Show results if simulator completed
+  if (!showSimulator && exercises.length > 0 && results.length > 0) {
     return (
       <div className="min-h-screen">
         <Header />
         <main className="pt-24">
           <div className="container mx-auto px-4 py-12 max-w-4xl">
-            <DemoResults results={results} onRestart={restartDemo} />
+            <ExamResults results={{ exercises: results }} onRestart={restartDemo} />
           </div>
         </main>
         <Footer />

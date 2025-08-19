@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.grade-mcq]
 verify_jwt = false
+
+[functions.evaluate-exercise]
+verify_jwt = false

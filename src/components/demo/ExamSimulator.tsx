@@ -5,6 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Clock, ChevronLeft, ChevronRight, Send, SkipForward, ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { AudioRecorder } from './AudioRecorder';
 
 interface Question {
   id: string;
@@ -36,7 +37,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [audioPlayer, setAudioPlayer] = useState<HTMLAudioElement | null>(null);
   const [writingText, setWritingText] = useState('');
-  const [recordingData, setRecordingData] = useState<any>(null);
+  const [recordingData, setRecordingData] = useState<{ transcription?: string; recorded?: boolean; timestamp?: number } | null>(null);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -197,18 +198,64 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
     handleNextExercise();
   };
 
-  const handleSubmitExam = () => {
-    const results = {
-      exercises: exercises.map(exercise => ({
-        id: exercise.id,
-        type: exercise.type,
+  const handleSubmitExam = async () => {
+    // Evaluate all exercises
+    const evaluatedResults = [];
+
+    for (const exercise of exercises) {
+      let evaluation = null;
+      
+      if (exercise.type === 'ascolto' || exercise.type === 'lettura') {
+        // Get answers for this exercise
+        const exerciseAnswers: Record<string, string> = {};
+        exercise.questions.forEach(q => {
+          if (answers[q.id]) {
+            exerciseAnswers[q.id] = answers[q.id];
+          }
+        });
+
+        const response = await supabase.functions.invoke('evaluate-exercise', {
+          body: {
+            exercise,
+            answers: exerciseAnswers
+          }
+        });
+        
+        evaluation = response.data;
+      } else if (exercise.type === 'scrittura') {
+        const response = await supabase.functions.invoke('evaluate-exercise', {
+          body: {
+            exercise,
+            writingText: answers[`${exercise.id}_writing`] || ''
+          }
+        });
+        
+        evaluation = response.data;
+      } else if (exercise.type === 'produzione_orale') {
+        const response = await supabase.functions.invoke('evaluate-exercise', {
+          body: {
+            exercise,
+            transcription: recordingData?.transcription || ''
+          }
+        });
+        
+        evaluation = response.data;
+      }
+
+      evaluatedResults.push({
+        exercise,
+        evaluation,
         answers: exercise.questions.map(q => ({
           questionId: q.id,
           answer: answers[q.id] || ''
         })),
         writingText: exercise.type === 'scrittura' ? answers[`${exercise.id}_writing`] : undefined,
         recordingData: exercise.type === 'produzione_orale' ? recordingData : undefined
-      })),
+      });
+    }
+
+    const results = {
+      exercises: evaluatedResults,
       completedAt: new Date().toISOString(),
       totalTime: exercises.reduce((acc, ex) => acc + ex.timer_seconds, 0)
     };
@@ -282,24 +329,24 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   );
 
   const renderSpeakingExercise = () => (
-    <div className="space-y-6 text-center">
-      <div>
+    <div className="space-y-6">
+      <div className="text-center">
         <p className="text-lg mb-4">{currentExercise.prompt_it}</p>
         <p className="text-sm text-muted-foreground">Registra la tua risposta (2-3 minuti)</p>
       </div>
-      <div className="space-y-4">
-        <Button 
-          size="lg"
-          onClick={() => {
-            // Simulazione registrazione
-            setRecordingData({ recorded: true, timestamp: Date.now() });
-            toast({ title: "Registrazione completata!" });
-          }}
-          disabled={!!recordingData}
-        >
-          {recordingData ? '✅ Registrato' : '🎤 Inizia Registrazione'}
-        </Button>
-      </div>
+      <AudioRecorder
+        onRecordingComplete={(transcription) => {
+          setRecordingData({ transcription, recorded: true, timestamp: Date.now() });
+          toast({ title: "Registrazione e trascrizione completate!" });
+        }}
+        maxDuration={180}
+      />
+      {recordingData && (
+        <div className="bg-muted/50 p-4 rounded-lg">
+          <h4 className="font-semibold mb-2">Trascrizione del tuo audio:</h4>
+          <p className="text-sm">{recordingData.transcription}</p>
+        </div>
+      )}
     </div>
   );
 
