@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-function createServiceClient() {
+function supaSrv() {
   const url = "https://fbydiennwirsoccbngvt.supabase.co";
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!key) throw new Error("SUPABASE_SERVICE_ROLE_KEY missing");
@@ -13,10 +13,9 @@ export default async function handler(req: any, res: any) {
       return res.status(405).json({ error: "Metodo non consentito" });
     }
 
-    const supa = createServiceClient();
+    const supa = supaSrv();
 
-    // Read from public view using service role
-    const { data, error } = await supa
+    let { data, error } = await supa
       .from("demo_exercises_public")
       .select("id, title, skill_type, content, created_at, updated_at")
       .order("id", { ascending: true });
@@ -24,6 +23,36 @@ export default async function handler(req: any, res: any) {
     if (error) {
       console.error("Database error:", error);
       return res.status(500).json({ error: "Impossibile caricare gli esercizi. Riprova." });
+    }
+
+    if (!data || data.length === 0) {
+      // Use APP_BASE_URL or fallback to origin or localhost
+      const baseUrl = process.env.APP_BASE_URL || req.headers.origin || 'http://127.0.0.1:3000';
+      const bootstrapUrl = `${baseUrl}/api/demo/bootstrap`;
+      
+      console.log(`No exercises found, attempting bootstrap at: ${bootstrapUrl}`);
+      
+      try {
+        const bootstrapResponse = await fetch(bootstrapUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (bootstrapResponse.ok) {
+          console.log("Bootstrap successful, retrying fetch...");
+          // Retry fetching after bootstrap
+          const retryResult = await supa
+            .from("demo_exercises_public")
+            .select("id, title, skill_type, content, created_at, updated_at")
+            .order("id", { ascending: true });
+          data = retryResult.data || [];
+        } else {
+          console.error("Bootstrap failed with status:", bootstrapResponse.status);
+        }
+      } catch (bootstrapError) {
+        console.error("Bootstrap fetch failed:", bootstrapError);
+        // Continue with empty data rather than fail completely
+      }
     }
 
     // Get questions for all exercises
@@ -42,7 +71,7 @@ export default async function handler(req: any, res: any) {
     }
 
     // Transform data for frontend and fix skill type mapping
-    const items = (data || []).map((exercise: any) => {
+    const normalized = (data || []).map((exercise: any) => {
       const content = exercise.content || {};
       // Map skill types to match frontend expectations
       const mappedType = exercise.skill_type === "orale" ? "produzione_orale" : exercise.skill_type;
@@ -62,37 +91,20 @@ export default async function handler(req: any, res: any) {
       };
     });
 
-    // Select one per skill type for demo (free version)
-    const skillTypes = ["ascolto", "lettura", "scrittura", "produzione_orale"];
+    // Select one per skill type for demo (free version) in proper order
+    const order = ["ascolto", "lettura", "scrittura", "produzione_orale"];
     const finalItems: any[] = [];
     
-    for (const skillType of skillTypes) {
-      const found = items.find((item: any) => item.type === skillType);
+    for (const skillType of order) {
+      const found = normalized.find((item: any) => item.type === skillType);
       if (found) {
         finalItems.push(found);
       }
     }
 
-    // If no exercises exist, bootstrap them
-    if (finalItems.length === 0) {
-      try {
-        const bootstrapResponse = await fetch(`${req.headers.origin || 'http://localhost:3000'}/api/demo/bootstrap`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' }
-        });
-        
-        if (bootstrapResponse.ok) {
-          // Retry fetching after bootstrap
-          return handler(req, res);
-        }
-      } catch (error) {
-        console.error("Bootstrap failed:", error);
-      }
-    }
-
     return res.status(200).json({ items: finalItems });
-  } catch (e) {
+  } catch (e: any) {
     console.error("Server error:", e);
-    return res.status(500).json({ error: "Impossibile caricare gli esercizi. Riprova." });
+    return res.status(500).json({ error: e.message || "Impossibile caricare gli esercizi. Riprova." });
   }
 }
