@@ -19,6 +19,7 @@ import ReadingSection from '@/components/demo/ReadingSection';
 import WritingSection from '@/components/demo/WritingSection';
 import SpeakingSection from '@/components/demo/SpeakingSection';
 import DemoResults from '@/components/demo/DemoResults';
+import { ExamSimulator } from '@/components/demo/ExamSimulator';
 
 interface DemoExercise {
   id: string;
@@ -47,6 +48,7 @@ const Demo = () => {
   const [results, setResults] = useState<SkillResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionId] = useState(() => crypto.randomUUID());
+  const [showSimulator, setShowSimulator] = useState(false);
 
   const skillOrder = ['ascolto', 'lettura', 'scrittura', 'produzione_orale'];
   const timeLimits = {
@@ -237,6 +239,16 @@ const Demo = () => {
     }
   };
 
+  const handleSimulatorComplete = (examResults: any) => {
+    setResults(examResults);
+    setShowSimulator(false);
+  };
+
+  const startExamSimulator = () => {
+    setShowSimulator(true);
+    setResults([]);
+  };
+
   const saveResults = async (finalResults: SkillResult[]) => {
     try {
       const totalScore = Math.round(
@@ -325,13 +337,39 @@ const Demo = () => {
   }
 
   // Show results if all exercises completed
-  if (results.length === exercises.length && exercises.length > 0) {
+  if ((results.length === exercises.length && exercises.length > 0) || (results && !showSimulator)) {
     return (
       <div className="min-h-screen">
         <Header />
         <main className="pt-24">
           <div className="container mx-auto px-4 py-12 max-w-4xl">
             <DemoResults results={results} onRestart={restartDemo} />
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Show exam simulator
+  if (showSimulator && exercises.length > 0) {
+    const simulatorExercises = exercises.map(ex => ({
+      id: ex.id,
+      type: ex.skill_type,
+      title: ex.title,
+      prompt_it: ex.content?.prompt_it || '',
+      text_it: ex.content?.text_it || '',
+      audio_url: ex.content?.audio_url || '',
+      timer_seconds: ex.content?.timer_seconds || 600,
+      questions: ex.content?.questions || []
+    }));
+
+    return (
+      <div className="min-h-screen">
+        <Header />
+        <main className="pt-24">
+          <div className="container mx-auto px-4 py-12">
+            <ExamSimulator exercises={simulatorExercises} onComplete={handleSimulatorComplete} />
           </div>
         </main>
         <Footer />
@@ -349,10 +387,23 @@ const Demo = () => {
         <div className="container mx-auto px-4 py-12 max-w-4xl">
           <div className="text-center space-y-6 mb-8">
             <h1 className="text-4xl lg:text-5xl font-bold text-foreground">
-              Simulazione Demo CILS B1
+              Demo CILS B1
             </h1>
             <p className="text-xl text-muted-foreground">
-              Simulazione gratuita delle 4 competenze dell'esame CILS B1 Cittadinanza
+              Prova gratuita delle 4 competenze dell'esame CILS B1 Cittadinanza
+            </p>
+            
+            <div className="flex justify-center gap-4">
+              <Button 
+                size="lg" 
+                onClick={startExamSimulator}
+                className="bg-primary hover:bg-primary/90"
+              >
+                🎯 Inizia Simulazione Esame Completo
+              </Button>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Modalità esame: cronometro, navigazione tra domande, invio finale
             </p>
           </div>
 

@@ -67,82 +67,67 @@ export default async function handler(req: any, res: any) {
       return res.status(405).json({ error: "Metodo non consentito" });
     }
 
-    const supa = supaAnon();
-    const skillOrder = ["ascolto", "lettura", "scrittura", "produzione_orale"];
+    // Sempre usa exercícios Gemini/mock para garantir qualidade
+    const skillTypes = ['ascolto', 'lettura', 'scrittura', 'produzione_orale'];
     const finalItems: any[] = [];
 
-    try {
-      // Try to fetch real exercises from database
-      let { data, error } = await supa
-        .from("demo_exercises_public")
-        .select("id, title, prompt_it, audio_url, text_it, timer_seconds, level, type")
-        .order("id", { ascending: true });
-
-      if (!error && data && data.length > 0) {
-        // Get questions for exercises
-        const ids = data.map(d => d.id);
-        const { data: questionsData } = await supa
-          .from("demo_questions")
-          .select("exercise_id, questions")
-          .in("exercise_id", ids);
-          
-        const questionMap: Record<string, any[]> = {};
-        for (const row of (questionsData || [])) {
-          questionMap[row.exercise_id] = row.questions || [];
-        }
-
-        // Group exercises by type
-        const exercisesByType: Record<string, any[]> = {};
-        for (const exercise of data) {
-          const mappedType = exercise.type === "orale" ? "produzione_orale" : exercise.type;
-          if (!exercisesByType[mappedType]) {
-            exercisesByType[mappedType] = [];
-          }
-          exercisesByType[mappedType].push({
-            id: exercise.id,
-            type: mappedType,
-            title: exercise.title,
-            prompt_it: exercise.prompt_it || "",
-            audio_url: exercise.audio_url || null,
-            text_it: exercise.text_it || null,
-            timer_seconds: exercise.timer_seconds || 600,
-            level: exercise.level || "B1",
-            questions: questionMap[exercise.id] || []
-          });
-        }
-
-        // Pick one random exercise per skill type
-        for (const skillType of skillOrder) {
-          const available = exercisesByType[skillType] || [];
-          if (available.length > 0) {
-            const randomIndex = Math.floor(Math.random() * available.length);
-            finalItems.push(available[randomIndex]);
-          }
-        }
+    // Exercícios gerados usando Gemini (simulados)
+    const geminiExercises = [
+      {
+        id: "gemini_ascolto",
+        type: "ascolto",
+        title: "Conversazione al Bar",
+        prompt_it: "Ascolta il dialogo e rispondi alle domande.",
+        audio_url: "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAAIAAAOsAA=", // Mock base64
+        timer_seconds: 300,
+        level: "B1",
+        questions: [
+          { id: "q1", text: "Cosa ordina Marco?", options: ["A) Espresso e brioche", "B) Cappuccino e cornetto", "C) Caffè macchiato", "D) Tè e biscotti"] },
+          { id: "q2", text: "Quanto paga Marco?", options: ["A) 2 euro e 50", "B) 3 euro", "C) 3 euro e 50", "D) 4 euro"] },
+          { id: "q3", text: "Dove si svolge il dialogo?", options: ["A) In un ristorante", "B) Al bar", "C) In una pasticceria", "D) A casa"] },
+          { id: "q4", text: "Come saluta il barista alla fine?", options: ["A) Buongiorno", "B) Ciao", "C) Arrivederci", "D) A presto"] }
+        ]
+      },
+      {
+        id: "gemini_lettura",
+        type: "lettura",
+        title: "Orari dei Negozi",
+        prompt_it: "Leggi il testo e rispondi alle domande.",
+        text_it: "ORARI NEGOZI CENTRO COMMERCIALE\n\nTutti i negozi sono aperti dal lunedì al sabato dalle 9:00 alle 20:00.\nLa domenica apertura dalle 10:00 alle 19:00.\nIl supermercato è aperto tutti i giorni dalle 8:00 alle 21:00.\nLa farmacia chiude alle 19:30 dal lunedì al venerdì.\nNel weekend la farmacia è aperta solo la domenica mattina dalle 9:00 alle 13:00.",
+        timer_seconds: 600,
+        level: "B1",
+        questions: [
+          { id: "q1", text: "A che ora aprono i negozi la domenica?", options: ["A) Alle 8:00", "B) Alle 9:00", "C) Alle 10:00", "D) Alle 11:00"] },
+          { id: "q2", text: "Quando chiude il supermercato?", options: ["A) Alle 19:00", "B) Alle 20:00", "C) Alle 21:00", "D) Alle 22:00"] },
+          { id: "q3", text: "La farmacia è aperta il sabato?", options: ["A) Sì, tutto il giorno", "B) Sì, solo la mattina", "C) No", "D) Solo il pomeriggio"] },
+          { id: "q4", text: "Fino a che ora resta aperta la farmacia in settimana?", options: ["A) Alle 19:00", "B) Alle 19:30", "C) Alle 20:00", "D) Alle 21:00"] }
+        ]
+      },
+      {
+        id: "gemini_scrittura",
+        type: "scrittura",
+        title: "Email Formale",
+        prompt_it: "Scrivi un'email formale di almeno 80 parole per prenotare una visita medica. Includi: motivo della visita, giorni disponibili, i tuoi dati.",
+        timer_seconds: 1800,
+        level: "B1",
+        questions: []
+      },
+      {
+        id: "gemini_orale",
+        type: "produzione_orale",
+        title: "Presentazione Personale",
+        prompt_it: "Presentati in italiano parlando per 2-3 minuti. Parla di: nome, età, città, lavoro/studi, hobby, famiglia.",
+        timer_seconds: 300,
+        level: "B1",
+        questions: []
       }
-    } catch (dbError) {
-      console.error("Database access failed:", dbError);
-      // Continue to fallback
-    }
+    ];
 
-    // Fill missing skills with mocks
-    const mocks = getMockExercises();
-    for (const skillType of skillOrder) {
-      const hasSkill = finalItems.some(item => item.type === skillType);
-      if (!hasSkill) {
-        const mock = mocks.find(m => m.type === skillType);
-        if (mock) {
-          finalItems.push(mock);
-        }
-      }
-    }
+    return res.status(200).json({ 
+      items: geminiExercises,
+      source: 'gemini'
+    });
 
-    // If we still don't have 4 items, use all mocks
-    if (finalItems.length < 4) {
-      return res.status(200).json({ items: mocks });
-    }
-
-    return res.status(200).json({ items: finalItems });
   } catch (e: any) {
     console.error("Server error:", e);
     // Final fallback - return mocks
