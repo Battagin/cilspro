@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Mic, MicOff, Clock, Play } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface SpeakingSectionProps {
   exercise: {
@@ -32,6 +33,7 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (timeLeft > 0 && !isCompleted) {
@@ -88,8 +90,8 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
         const url = URL.createObjectURL(audioBlob);
         setAudioURL(url);
         
-        // Convert to base64 and transcribe
-        await transcribeAudio(audioBlob);
+        // Process the audio with new endpoint
+        await transcribeAndEvaluate(audioBlob);
         
         // Stop all tracks
         stream.getTracks().forEach(track => track.stop());
@@ -116,56 +118,37 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
     }
   };
 
-  const transcribeAudio = async (audioBlob: Blob) => {
+  const transcribeAndEvaluate = async (audioBlob: Blob) => {
     setIsProcessing(true);
     
     try {
-      // Convert blob to base64
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      
-      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
-        body: { audioData: base64 }
-      });
-
-      if (error) throw error;
-
-      const transcribedText = data.text || '';
-      setTranscription(transcribedText);
-      
-      if (transcribedText.trim().length > 0) {
-        // Evaluate the transcription
-        await evaluateSpeaking(transcribedText);
-      } else {
-        toast({
-          title: "Trascrizione vuota",
-          description: "Non è stato possibile trascrivere l'audio. Riprova.",
-          variant: "destructive"
-        });
+      // Create FormData with the audio file
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'audio.webm');
+      formData.append('consegna', exercise.content.instructions);
+      if (user?.id) {
+        formData.append('user_id', user.id);
       }
-      
-    } catch (error) {
-      console.error('Error transcribing audio:', error);
-      toast({
-        title: "Errore trascrizione",
-        description: "Errore nella trascrizione dell'audio.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
-  const evaluateSpeaking = async (transcribedText: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke('evaluate-speaking', {
-        body: { transcription: transcribedText }
+      const { data, error } = await supabase.functions.invoke('eval-orale', {
+        body: formData
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('Limite giornaliero')) {
+          toast({
+            title: "Limite raggiunto",
+            description: "Limite giornaliero raggiunto nella versione gratuita. Passa al piano Premium per accesso illimitato.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
+      setTranscription(data.transcript || '');
       setIsCompleted(true);
-      onComplete(transcribedText, data);
+      onComplete(data.transcript, data.evaluation);
       
       toast({
         title: "Valutazione completata",
@@ -173,12 +156,14 @@ const SpeakingSection: React.FC<SpeakingSectionProps> = ({
       });
       
     } catch (error) {
-      console.error('Error evaluating speaking:', error);
+      console.error('Error in transcription and evaluation:', error);
       toast({
-        title: "Errore valutazione",
-        description: "Errore nella valutazione. I dati sono stati salvati.",
+        title: "Errore nella valutazione",
+        description: "Si è verificato un errore. Riprova.",
         variant: "destructive"
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 

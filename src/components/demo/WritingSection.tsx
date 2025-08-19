@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { PenTool, Clock, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface WritingSectionProps {
   exercise: {
@@ -28,6 +29,7 @@ const WritingSection: React.FC<WritingSectionProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
     if (timeLeft > 0 && !isCompleted) {
@@ -59,11 +61,25 @@ const WritingSection: React.FC<WritingSectionProps> = ({
     setIsEvaluating(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('evaluate-writing', {
-        body: { text }
+      const { data, error } = await supabase.functions.invoke('eval-scrittura', {
+        body: { 
+          user_id: user?.id,
+          text,
+          consegna: exercise.content.instructions
+        }
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message?.includes('Limite giornaliero')) {
+          toast({
+            title: "Limite raggiunto",
+            description: "Limite giornaliero raggiunto nella versione gratuita. Passa al piano Premium per accesso illimitato.",
+            variant: "destructive"
+          });
+          return;
+        }
+        throw error;
+      }
 
       setIsCompleted(true);
       onComplete(text, data);

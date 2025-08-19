@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_cache: {
+        Row: {
+          cache_key: string
+          created_at: string
+          ttl_seconds: number
+          value: Json
+        }
+        Insert: {
+          cache_key: string
+          created_at?: string
+          ttl_seconds?: number
+          value: Json
+        }
+        Update: {
+          cache_key?: string
+          created_at?: string
+          ttl_seconds?: number
+          value?: Json
+        }
+        Relationships: []
+      }
+      daily_usage: {
+        Row: {
+          count: number
+          id: number
+          skill: string
+          used_on: string
+          user_id: string | null
+        }
+        Insert: {
+          count?: number
+          id?: number
+          skill: string
+          used_on: string
+          user_id?: string | null
+        }
+        Update: {
+          count?: number
+          id?: number
+          skill?: string
+          used_on?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       demo_attempts: {
         Row: {
           completed_at: string

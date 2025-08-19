@@ -1,4 +1,10 @@
 project_id = "fbydiennwirsoccbngvt"
 
+[functions.eval-scrittura]
+verify_jwt = false
+
+[functions.eval-orale]
+verify_jwt = false
+
 [functions.grade-mcq]
 verify_jwt = false
