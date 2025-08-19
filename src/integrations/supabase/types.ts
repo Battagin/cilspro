@@ -116,6 +116,39 @@ export type Database = {
         }
         Relationships: []
       }
+      demo_questions: {
+        Row: {
+          created_at: string
+          exercise_id: string
+          questions: Json
+        }
+        Insert: {
+          created_at?: string
+          exercise_id: string
+          questions: Json
+        }
+        Update: {
+          created_at?: string
+          exercise_id?: string
+          questions?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "demo_questions_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: true
+            referencedRelation: "demo_exercises"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "demo_questions_exercise_id_fkey"
+            columns: ["exercise_id"]
+            isOneToOne: true
+            referencedRelation: "demo_exercises_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
