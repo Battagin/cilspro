@@ -56,18 +56,10 @@ const Demo = () => {
     produzione_orale: 600 // 10 minuti
   };
 
-  // Auth guard
+  // Load exercises immediately without auth requirement
   useEffect(() => {
-    if (!loading && !user) {
-      navigate('/login?redirect=/demo');
-    }
-  }, [user, loading, navigate]);
-
-  useEffect(() => {
-    if (user) {
-      loadExercises();
-    }
-  }, [user]);
+    loadExercises();
+  }, []);
 
   const loadExercises = async () => {
     try {
@@ -135,20 +127,23 @@ const Demo = () => {
         finalResults.reduce((sum, result) => sum + result.score, 0) / finalResults.length
       );
 
-      const { error } = await supabase
-        .from('demo_attempts')
-        .insert({
-          user_id: user?.id,
-          session_id: sessionId,
-          total_score: totalScore,
-          results: finalResults as any
-        });
+      // Only save if user is logged in
+      if (user) {
+        const { error } = await supabase
+          .from('demo_attempts')
+          .insert({
+            user_id: user.id,
+            session_id: sessionId,
+            total_score: totalScore,
+            results: finalResults as any
+          });
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       toast({
         title: "Simulazione completata!",
-        description: "I tuoi risultati sono stati salvati."
+        description: user ? "I tuoi risultati sono stati salvati." : "Registrati per salvare i risultati!"
       });
     } catch (error) {
       console.error('Error saving results:', error);
@@ -181,10 +176,7 @@ const Demo = () => {
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user) {
-    return null;
-  }
+  // Demo is now open to everyone - no auth check needed
 
   // Show empty state if no exercises
   if (!isLoading && exercises.length === 0) {
