@@ -36,7 +36,7 @@ const Hero = () => {
               </Link>
               <Link to="/demo">
                 <Button variant="outline" size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
-                  {t("viewDemo")}
+                  🎯 Inizia Simulazione Esame Completo
                 </Button>
               </Link>
             </div>

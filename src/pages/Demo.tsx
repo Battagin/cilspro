@@ -13,6 +13,7 @@ import { Link } from "react-router-dom";
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { ExerciseCache } from '@/utils/exerciseCache';
 
 import ListeningSection from '@/components/demo/ListeningSection';
 import ReadingSection from '@/components/demo/ReadingSection';
@@ -59,6 +60,62 @@ const Demo = () => {
     produzione_orale: 600 // 10 minuti
   };
 
+  // Fallback exercises in case of errors
+  const fallbackExercises: DemoExercise[] = [
+    {
+      id: 'hardcoded_ascolto_1',
+      skill_type: 'ascolto',
+      title: 'Conversazione al Bar',
+      content: {
+        prompt_it: "Ascolta il dialogo e rispondi alle domande.",
+        audio_url: 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hsr2QcBSaO1vPUgC0ELnLG8N+SRAsUVLLn+7VhFgY+ltryxnkpBSB6yu7bjSIEMGvH8N2QQAsTU7Pt6qhXFAlFnN/tr2QdBSaN1/TVgyMFNW/H8N2QQAoUVbPo7bdiFAY9l9vyxnkqBSB6yu7ZjyQFLWbH8N2QQAoUVbTo7LVjFQY9l9vyxHwrBSF6yu7ZjSUENG7H8N2QQAsTUbPn9LdnBSF6yu7bjCQFLWXD8OGXTgoURK3d8K9oFAY',
+        timer_seconds: 480,
+        questions: [
+          { id: 'q1', text: "Cosa ordina Marco?", options: ['A) Espresso e brioche', 'B) Cappuccino e cornetto', 'C) Caffè macchiato', 'D) Tè e biscotti'] },
+          { id: 'q2', text: "Quanto paga Marco?", options: ['A) 2 euro e 50', 'B) 3 euro', 'C) 3 euro e 50', 'D) 4 euro'] },
+          { id: 'q3', text: "Dove si svolge il dialogo?", options: ['A) In un ristorante', 'B) Al bar', 'C) In una pasticceria', 'D) A casa'] },
+          { id: 'q4', text: "Come saluta il barista alla fine?", options: ['A) Buongiorno', 'B) Ciao', 'C) Arrivederci', 'D) A presto'] }
+        ],
+      },
+    },
+    {
+      id: 'hardcoded_lettura_1',
+      skill_type: 'lettura',
+      title: "Orari dei Negozi",
+      content: {
+        prompt_it: 'Leggi il testo e rispondi alle domande.',
+        text_it: "ORARI NEGOZI CENTRO COMMERCIALE\n\nTutti i negozi sono aperti dal lunedì al sabato dalle 9:00 alle 20:00.\nLa domenica apertura dalle 10:00 alle 19:00.\nIl supermercato è aperto tutti i giorni dalle 8:00 alle 21:00.\nLa farmacia chiude alle 19:30 dal lunedì al venerdì.\nNel weekend la farmacia è aperta solo la domenica mattina dalle 9:00 alle 13:00.",
+        timer_seconds: 600,
+        questions: [
+          { id: 'q1', text: "A che ora aprono i negozi la domenica?", options: ['A) Alle 8:00', 'B) Alle 9:00', 'C) Alle 10:00', 'D) Alle 11:00'] },
+          { id: 'q2', text: "Quando chiude il supermercato?", options: ['A) Alle 19:00', 'B) Alle 20:00', 'C) Alle 21:00', 'D) Alle 22:00'] },
+          { id: 'q3', text: "La farmacia è aperta il sabato?", options: ['A) Sì, tutto il giorno', 'B) Sì, solo la mattina', 'C) No', 'D) Solo il pomeriggio'] },
+          { id: 'q4', text: "Fino a che ora resta aperta la farmacia in settimana?", options: ['A) Alle 19:00', 'B) Alle 19:30', 'C) Alle 20:00', 'D) Alle 21:00'] }
+        ],
+      },
+    },
+    {
+      id: 'hardcoded_scrittura_1',
+      skill_type: 'scrittura',
+      title: 'Email Formale',
+      content: {
+        prompt_it: 'Scrivi una e-mail formale (90–120 parole) per prenotare una visita medica. Includi: motivo della visita, giorni disponibili, i tuoi dati.',
+        timer_seconds: 1800,
+        questions: [],
+      },
+    },
+    {
+      id: 'hardcoded_orale_1',
+      skill_type: 'produzione_orale',
+      title: 'Presentazione Personale',
+      content: {
+        prompt_it: 'Presentati in italiano parlando per 2-3 minuti. Parla di: nome, età, città, lavoro/studi, hobby, famiglia.',
+        timer_seconds: 300,
+        questions: [],
+      },
+    },
+  ];
+
   // Load exercises immediately without auth requirement
   useEffect(() => {
     loadExercises();
@@ -68,112 +125,96 @@ const Demo = () => {
     try {
       setIsLoading(true);
 
-      // Load one exercise per skill from Supabase Edge Function (Gemini-based)
+      // Load exercises from cache or generate new ones
       const skills = ['ascolto', 'lettura', 'scrittura', 'produzione_orale'] as const;
+      const allExercises = [];
 
-      const promises = skills.map((skill) =>
-        supabase.functions.invoke('generate-exercises', {
-          body: { skill_type: skill },
-        })
-      );
-
-      const results = await Promise.all(promises);
-
-      const items = results
-        .map((res, idx) => {
-          if (res.error) {
-            console.warn(`Errore caricando ${skills[idx]}:`, res.error);
-            return null;
-          }
-          const exercise = (res.data as any)?.exercise;
-          if (!exercise) return null;
-          return {
-            id: exercise.id,
-            skill_type: exercise.type,
-            title: exercise.title,
+      for (const skill of skills) {
+        // Try to get 3 exercises from cache
+        const cachedExercises = ExerciseCache.getExercisesByType(skill, 3);
+        
+        if (cachedExercises.length >= 3) {
+          // Use cached exercises
+          allExercises.push(...cachedExercises.map(ex => ({
+            id: ex.id,
+            skill_type: ex.type,
+            title: ex.title,
             content: {
-              prompt_it: exercise.prompt_it,
-              audio_url: exercise.audio_url,
-              text_it: exercise.text_it,
-              timer_seconds: exercise.timer_seconds,
-              questions: exercise.questions || [],
-              min_words: exercise.min_words,
-              max_words: exercise.max_words,
+              prompt_it: ex.prompt_it,
+              audio_url: ex.audio_url,
+              text_it: ex.text_it,
+              timer_seconds: ex.timer_seconds,
+              questions: ex.questions || [],
+              min_words: ex.min_words,
+              max_words: ex.max_words,
             },
-          };
-        })
-        .filter(Boolean) as DemoExercise[];
+          })));
+        } else {
+          // Generate new exercises and cache them
+          const response = await supabase.functions.invoke('generate-exercises', {
+            body: { skill_type: skill, count: 3 },
+          });
 
-      if (!items || items.length === 0) {
+          if (response.error) {
+            console.warn(`Errore caricando ${skill}:`, response.error);
+            continue;
+          }
+
+          const exercisesData = response.data?.exercises || [response.data?.exercise].filter(Boolean);
+          
+          for (const exercise of exercisesData) {
+            if (exercise) {
+              // Cache the exercise
+              ExerciseCache.addExercise({
+                id: exercise.id,
+                type: exercise.type,
+                title: exercise.title,
+                prompt_it: exercise.prompt_it,
+                text_it: exercise.text_it,
+                audio_url: exercise.audio_url,
+                audio_text: exercise.audio_text,
+                timer_seconds: exercise.timer_seconds,
+                questions: exercise.questions || [],
+                min_words: exercise.min_words,
+                max_words: exercise.max_words,
+              });
+
+              allExercises.push({
+                id: exercise.id,
+                skill_type: exercise.type,
+                title: exercise.title,
+                content: {
+                  prompt_it: exercise.prompt_it,
+                  audio_url: exercise.audio_url,
+                  text_it: exercise.text_it,
+                  timer_seconds: exercise.timer_seconds,
+                  questions: exercise.questions || [],
+                  min_words: exercise.min_words,
+                  max_words: exercise.max_words,
+                },
+              });
+            }
+          }
+        }
+      }
+
+      if (allExercises.length === 0) {
         throw new Error('Nessun esercizio disponibile');
       }
 
-      setExercises(items);
+      setExercises(allExercises);
 
+      const cacheStats = ExerciseCache.getCacheStats();
       toast({
         title: 'Demo caricata',
-        description: 'Esercizi generati con Gemini.'
+        description: `12 esercizi pronti (${cacheStats.exerciseCount} in cache).`
       });
     } catch (error) {
       console.error('Error loading exercises:', error);
-
-      // Hardcoded fallback che funziona sempre
-      const fallbackExercises: DemoExercise[] = [
-        {
-          id: 'hardcoded_ascolto',
-          skill_type: 'ascolto',
-          title: 'Informazioni al Comune',
-          content: {
-            prompt_it: "Ascolta l'audio e rispondi alle domande.",
-            audio_url: 'https://www.soundjay.com/misc/sounds/bell-ringing-05.wav',
-            timer_seconds: 480,
-            questions: [
-              { id: 'q1', text: "Quando riapre l'ufficio?", options: ['A) 9:00', 'B) 11:00', 'C) 14:00', 'D) 16:00'] },
-              { id: 'q2', text: 'Per urgenze bisogna:', options: ['A) Telefonare', 'B) Scrivere e-mail', 'C) Andare di persona', 'D) Compilare modulo'] },
-            ],
-          },
-        },
-        {
-          id: 'hardcoded_lettura',
-          skill_type: 'lettura',
-          title: "Avviso dell'Ufficio Anagrafe",
-          content: {
-            prompt_it: 'Leggi il testo e rispondi alle domande.',
-            text_it:
-              "AVVISO: L'ufficio anagrafe sarà chiuso lunedì mattina per aggiornamento dei sistemi. Riapertura alle 14:00. Per urgenze scrivere a anagrafe@comune.example.it oppure telefonare al numero verde.",
-            timer_seconds: 600,
-            questions: [
-              { id: 'q1', text: "Quando riapre l'ufficio?", options: ['A) 9:00', 'B) 11:00', 'C) 14:00', 'D) 16:00'] },
-              { id: 'q2', text: 'Per urgenze si deve:', options: ['A) Telefonare', 'B) Scrivere e-mail', 'C) Presentarsi', 'D) Compilare modulo'] },
-            ],
-          },
-        },
-        {
-          id: 'hardcoded_scrittura',
-          skill_type: 'scrittura',
-          title: 'Email di richiesta informazioni',
-          content: {
-            prompt_it:
-              'Scrivi una e-mail (90–120 parole) per chiedere quali documenti servono per richiedere la residenza a Vicenza.',
-            timer_seconds: 1200,
-            questions: [],
-          },
-        },
-        {
-          id: 'hardcoded_orale',
-          skill_type: 'produzione_orale',
-          title: 'Presentazione personale',
-          content: {
-            prompt_it:
-              'Registra un audio di 2 minuti: presentati, descrivi il tuo lavoro/studio e una difficoltà che hai superato vivendo in Italia.',
-            timer_seconds: 600,
-            questions: [],
-          },
-        },
-      ];
-
+      
+      // Use hardcoded fallback
       setExercises(fallbackExercises);
-
+      
       toast({
         title: 'Demo caricata',
         description: 'Usando esercizi demo predefiniti.'

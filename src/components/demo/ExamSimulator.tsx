@@ -176,12 +176,44 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   };
 
   const handleNextExercise = () => {
+    // Validate that all questions are answered before proceeding
+    if ((currentExercise.type === 'ascolto' || currentExercise.type === 'lettura') && currentExercise.questions.length > 0) {
+      const unansweredQuestions = currentExercise.questions.filter(q => !answers[q.id]);
+      if (unansweredQuestions.length > 0) {
+        toast({
+          title: "Completa tutte le domande",
+          description: `Rispondi a tutte le domande prima di continuare (${unansweredQuestions.length} rimanenti)`,
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     if (currentExercise.type === 'scrittura') {
+      if (!writingText.trim() || writingText.trim().split(/\s+/).length < 80) {
+        toast({
+          title: "Completa la scrittura",
+          description: "Scrivi almeno 80 parole prima di continuare",
+          variant: "destructive"
+        });
+        return;
+      }
       // Save writing text
       setAnswers(prev => ({
         ...prev,
         [`${currentExercise.id}_writing`]: writingText
       }));
+    }
+
+    if (currentExercise.type === 'produzione_orale') {
+      if (!recordingData?.recorded) {
+        toast({
+          title: "Registra la tua risposta",
+          description: "Completa la registrazione audio prima di continuare",
+          variant: "destructive"
+        });
+        return;
+      }
     }
 
     if (isLastExercise) {
