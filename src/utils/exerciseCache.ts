@@ -25,6 +25,7 @@ interface CachedFeedback {
 }
 
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 100; // Maximum exercises per skill type
 const EXERCISES_CACHE_KEY = 'cils_exercises_cache';
 const FEEDBACK_CACHE_KEY = 'cils_feedback_cache';
 
@@ -81,9 +82,16 @@ export class ExerciseCache {
     const cached = this.getCachedExercises();
     const typeExercises = cached.filter(ex => ex.type === type);
     
-    // Shuffle and return requested count
-    const shuffled = typeExercises.sort(() => Math.random() - 0.5);
+    // Prioritize newer exercises and shuffle
+    const sorted = typeExercises.sort((a, b) => b.cachedAt - a.cachedAt);
+    const shuffled = sorted.sort(() => Math.random() - 0.5);
     return shuffled.slice(0, count);
+  }
+
+  static needsMoreExercises(type: string, requiredCount: number = 3): boolean {
+    const cached = this.getCachedExercises();
+    const typeExercises = cached.filter(ex => ex.type === type);
+    return typeExercises.length < requiredCount;
   }
 
   static addExercise(exercise: Omit<CachedExercise, 'cachedAt'>): void {
@@ -98,10 +106,26 @@ export class ExerciseCache {
     if (existingIndex >= 0) {
       cached[existingIndex] = newExercise;
     } else {
+      // Add to cache and manage size per type
       cached.push(newExercise);
+      this.manageCacheSize(cached, exercise.type);
     }
     
     this.setCachedExercises(cached);
+  }
+
+  private static manageCacheSize(cached: CachedExercise[], type: string): void {
+    const typeExercises = cached.filter(ex => ex.type === type);
+    if (typeExercises.length > MAX_CACHE_SIZE) {
+      // Remove oldest exercises of this type
+      const sortedByAge = typeExercises.sort((a, b) => a.cachedAt - b.cachedAt);
+      const toRemove = sortedByAge.slice(0, typeExercises.length - MAX_CACHE_SIZE);
+      
+      toRemove.forEach(ex => {
+        const index = cached.findIndex(c => c.id === ex.id);
+        if (index >= 0) cached.splice(index, 1);
+      });
+    }
   }
 
   static getFeedback(exerciseId: string, userInput: string): any | null {

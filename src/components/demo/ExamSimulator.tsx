@@ -6,6 +6,7 @@ import { Clock, ChevronLeft, ChevronRight, Send, SkipForward, ArrowLeft } from '
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AudioRecorder } from './AudioRecorder';
+import { ExerciseCache } from '@/utils/exerciseCache';
 
 interface Question {
   id: string;
@@ -40,6 +41,8 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   const [recordingData, setRecordingData] = useState<{ transcription?: string; recorded?: boolean; timestamp?: number } | null>(null);
   const [isAudioLoading, setIsAudioLoading] = useState(false);
   const [audioError, setAudioError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
   const currentExercise = exercises[currentExerciseIndex];
@@ -175,45 +178,55 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
     }
   };
 
-  const handleNextExercise = () => {
-    // Validate that all questions are answered before proceeding
-    if ((currentExercise.type === 'ascolto' || currentExercise.type === 'lettura') && currentExercise.questions.length > 0) {
+  const validateCurrentExercise = (): string[] => {
+    const errors: string[] = [];
+
+    if (currentExercise.type === 'ascolto' || currentExercise.type === 'lettura') {
       const unansweredQuestions = currentExercise.questions.filter(q => !answers[q.id]);
       if (unansweredQuestions.length > 0) {
-        toast({
-          title: "Completa tutte le domande",
-          description: `Rispondi a tutte le domande prima di continuare (${unansweredQuestions.length} rimanenti)`,
-          variant: "destructive"
-        });
-        return;
+        errors.push(`Rispondi a tutte le domande (${unansweredQuestions.length} rimanenti)`);
       }
     }
 
     if (currentExercise.type === 'scrittura') {
-      if (!writingText.trim() || writingText.trim().split(/\s+/).length < 80) {
-        toast({
-          title: "Completa la scrittura",
-          description: "Scrivi almeno 80 parole prima di continuare",
-          variant: "destructive"
-        });
-        return;
+      const wordCount = writingText.trim().split(/\s+/).length;
+      if (!writingText.trim()) {
+        errors.push('Scrivi il tuo testo');
+      } else if (wordCount < 80) {
+        errors.push(`Scrivi almeno 80 parole (attualmente: ${wordCount})`);
+      } else if (wordCount > 150) {
+        errors.push(`Rispetta il limite di 150 parole (attualmente: ${wordCount})`);
       }
-      // Save writing text
-      setAnswers(prev => ({
-        ...prev,
-        [`${currentExercise.id}_writing`]: writingText
-      }));
     }
 
     if (currentExercise.type === 'produzione_orale') {
       if (!recordingData?.recorded) {
-        toast({
-          title: "Registra la tua risposta",
-          description: "Completa la registrazione audio prima di continuare",
-          variant: "destructive"
-        });
-        return;
+        errors.push('Completa la registrazione audio');
       }
+    }
+
+    return errors;
+  };
+
+  const handleNextExercise = () => {
+    const errors = validateCurrentExercise();
+    setValidationErrors(errors);
+
+    if (errors.length > 0) {
+      toast({
+        title: "Completa l'esercizio",
+        description: errors[0],
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Save writing text if applicable
+    if (currentExercise.type === 'scrittura') {
+      setAnswers(prev => ({
+        ...prev,
+        [`${currentExercise.id}_writing`]: writingText
+      }));
     }
 
     if (isLastExercise) {
@@ -223,6 +236,7 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
       setCurrentQuestionIndex(0);
       setWritingText('');
       setRecordingData(null);
+      setValidationErrors([]);
     }
   };
 
@@ -231,68 +245,145 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
   };
 
   const handleSubmitExam = async () => {
-    // Evaluate all exercises
-    const evaluatedResults = [];
+    setIsSubmitting(true);
+    
+    try {
+      // Final validation
+      const allErrors: string[] = [];
+      exercises.forEach((exercise, index) => {
+        if (index <= currentExerciseIndex) {
+          const errors = validateExercise(exercise);
+          allErrors.push(...errors);
+        }
+      });
 
-    for (const exercise of exercises) {
-      let evaluation = null;
-      
-      if (exercise.type === 'ascolto' || exercise.type === 'lettura') {
-        // Get answers for this exercise
-        const exerciseAnswers: Record<string, string> = {};
-        exercise.questions.forEach(q => {
-          if (answers[q.id]) {
-            exerciseAnswers[q.id] = answers[q.id];
-          }
+      if (allErrors.length > 0) {
+        toast({
+          title: "Completa tutti gli esercizi",
+          description: allErrors[0],
+          variant: "destructive"
         });
-
-        const response = await supabase.functions.invoke('evaluate-exercise', {
-          body: {
-            exercise,
-            answers: exerciseAnswers
-          }
-        });
-        
-        evaluation = response.data;
-      } else if (exercise.type === 'scrittura') {
-        const response = await supabase.functions.invoke('evaluate-exercise', {
-          body: {
-            exercise,
-            writingText: answers[`${exercise.id}_writing`] || ''
-          }
-        });
-        
-        evaluation = response.data;
-      } else if (exercise.type === 'produzione_orale') {
-        const response = await supabase.functions.invoke('evaluate-exercise', {
-          body: {
-            exercise,
-            transcription: recordingData?.transcription || ''
-          }
-        });
-        
-        evaluation = response.data;
+        return;
       }
 
-      evaluatedResults.push({
-        exercise,
-        evaluation,
-        answers: exercise.questions.map(q => ({
-          questionId: q.id,
-          answer: answers[q.id] || ''
-        })),
-        writingText: exercise.type === 'scrittura' ? answers[`${exercise.id}_writing`] : undefined,
-        recordingData: exercise.type === 'produzione_orale' ? recordingData : undefined
+      // Evaluate all exercises with improved caching
+      const evaluatedResults = [];
+
+      for (const exercise of exercises) {
+        let evaluation = null;
+        
+        if (exercise.type === 'ascolto' || exercise.type === 'lettura') {
+          const exerciseAnswers: Record<string, string> = {};
+          exercise.questions.forEach(q => {
+            if (answers[q.id]) {
+              exerciseAnswers[q.id] = answers[q.id];
+            }
+          });
+
+          // Check cache first
+          const cacheKey = JSON.stringify({ exerciseId: exercise.id, answers: exerciseAnswers });
+          const cachedEvaluation = ExerciseCache.getFeedback(exercise.id, cacheKey);
+          
+          if (cachedEvaluation) {
+            evaluation = cachedEvaluation;
+          } else {
+            const response = await supabase.functions.invoke('evaluate-exercise', {
+              body: { exercise, answers: exerciseAnswers }
+            });
+            evaluation = response.data;
+            
+            // Cache the evaluation
+            if (evaluation) {
+              ExerciseCache.addFeedback(exercise.id, cacheKey, evaluation);
+            }
+          }
+        } else if (exercise.type === 'scrittura') {
+          const writingText = answers[`${exercise.id}_writing`] || '';
+          const cachedEvaluation = ExerciseCache.getFeedback(exercise.id, writingText);
+          
+          if (cachedEvaluation) {
+            evaluation = cachedEvaluation;
+          } else {
+            const response = await supabase.functions.invoke('evaluate-exercise', {
+              body: { exercise, writingText }
+            });
+            evaluation = response.data;
+            
+            if (evaluation) {
+              ExerciseCache.addFeedback(exercise.id, writingText, evaluation);
+            }
+          }
+        } else if (exercise.type === 'produzione_orale') {
+          const transcription = recordingData?.transcription || '';
+          const cachedEvaluation = ExerciseCache.getFeedback(exercise.id, transcription);
+          
+          if (cachedEvaluation) {
+            evaluation = cachedEvaluation;
+          } else {
+            const response = await supabase.functions.invoke('evaluate-exercise', {
+              body: { exercise, transcription }
+            });
+            evaluation = response.data;
+            
+            if (evaluation) {
+              ExerciseCache.addFeedback(exercise.id, transcription, evaluation);
+            }
+          }
+        }
+
+        evaluatedResults.push({
+          exercise,
+          evaluation,
+          answers: exercise.questions.map(q => ({
+            questionId: q.id,
+            answer: answers[q.id] || ''
+          })),
+          writingText: exercise.type === 'scrittura' ? answers[`${exercise.id}_writing`] : undefined,
+          recordingData: exercise.type === 'produzione_orale' ? recordingData : undefined
+        });
+      }
+
+      const results = {
+        exercises: evaluatedResults,
+        completedAt: new Date().toISOString(),
+        totalTime: exercises.reduce((acc, ex) => acc + ex.timer_seconds, 0)
+      };
+
+      onComplete(results);
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      toast({
+        title: "Errore invio",
+        description: "Si è verificato un errore. Riprova.",
+        variant: "destructive"
       });
+    } finally {
+      setIsSubmitting(false);
     }
+  };
 
-    const results = {
-      exercises: evaluatedResults,
-      completedAt: new Date().toISOString(),
-      totalTime: exercises.reduce((acc, ex) => acc + ex.timer_seconds, 0)
-    };
-
-    onComplete(results);
+  const validateExercise = (exercise: any): string[] => {
+    const errors: string[] = [];
+    
+    if (exercise.type === 'ascolto' || exercise.type === 'lettura') {
+      const unansweredQuestions = exercise.questions.filter((q: any) => !answers[q.id]);
+      if (unansweredQuestions.length > 0) {
+        errors.push(`${exercise.title}: completa tutte le domande`);
+      }
+    }
+    
+    if (exercise.type === 'scrittura') {
+      const writingText = answers[`${exercise.id}_writing`] || '';
+      if (!writingText.trim() || writingText.trim().split(/\s+/).length < 80) {
+        errors.push(`${exercise.title}: completa il testo scritto`);
+      }
+    }
+    
+    if (exercise.type === 'produzione_orale' && !recordingData?.recorded) {
+      errors.push(`${exercise.title}: completa la registrazione`);
+    }
+    
+    return errors;
   };
 
   const renderListeningExercise = () => (
@@ -485,19 +576,38 @@ export const ExamSimulator: React.FC<ExamSimulatorProps> = ({ exercises, onCompl
             </Button>
           </div>
 
-          <Button onClick={handleNextExercise}>
-            {isLastExercise ? (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                Invia per Correzione
-              </>
-            ) : (
-              <>
-                Avanti
-                <ChevronRight className="h-4 w-4 ml-2" />
-              </>
+          <div className="space-y-2">
+            {validationErrors.length > 0 && (
+              <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                {validationErrors.map((error, i) => (
+                  <div key={i}>• {error}</div>
+                ))}
+              </div>
             )}
-          </Button>
+            
+            <Button 
+              onClick={handleNextExercise}
+              disabled={isSubmitting}
+              className="min-w-[140px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                  Invio...
+                </>
+              ) : isLastExercise ? (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Invia per Correzione
+                </>
+              ) : (
+                <>
+                  Avanti
+                  <ChevronRight className="h-4 w-4 ml-2" />
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

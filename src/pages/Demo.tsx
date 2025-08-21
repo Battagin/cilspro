@@ -130,7 +130,7 @@ const Demo = () => {
       const allExercises = [];
 
       for (const skill of skills) {
-        // Try to get 3 exercises from cache
+        // Try to get 3 exercises from cache first
         const cachedExercises = ExerciseCache.getExercisesByType(skill, 3);
         
         if (cachedExercises.length >= 3) {
@@ -150,18 +150,49 @@ const Demo = () => {
             },
           })));
         } else {
-          // Generate new exercises and cache them
-          const response = await supabase.functions.invoke('generate-exercises', {
-            body: { skill_type: skill, count: 3 },
-          });
-
-          if (response.error) {
-            console.warn(`Errore caricando ${skill}:`, response.error);
-            continue;
-          }
-
-          const exercisesData = response.data?.exercises || [response.data?.exercise].filter(Boolean);
+          // Try dynamic generation first, fallback to static
+          let exercisesData = [];
           
+          try {
+            const dynamicResponse = await supabase.functions.invoke('generate-dynamic-exercises', {
+              body: { skill_type: skill, count: 3 - cachedExercises.length },
+            });
+            
+            if (!dynamicResponse.error && dynamicResponse.data?.exercises) {
+              exercisesData = dynamicResponse.data.exercises;
+            }
+          } catch (dynamicError) {
+            console.log('Dynamic generation failed, using static:', dynamicError);
+          }
+          
+          // Fallback to static exercises if dynamic generation fails
+          if (exercisesData.length === 0) {
+            const response = await supabase.functions.invoke('generate-exercises', {
+              body: { skill_type: skill, count: 3 - cachedExercises.length },
+            });
+
+            if (!response.error) {
+              exercisesData = response.data?.exercises || [response.data?.exercise].filter(Boolean);
+            }
+          }
+          
+          // Add cached exercises first
+          allExercises.push(...cachedExercises.map(ex => ({
+            id: ex.id,
+            skill_type: ex.type,
+            title: ex.title,
+            content: {
+              prompt_it: ex.prompt_it,
+              audio_url: ex.audio_url,
+              text_it: ex.text_it,
+              timer_seconds: ex.timer_seconds,
+              questions: ex.questions || [],
+              min_words: ex.min_words,
+              max_words: ex.max_words,
+            },
+          })));
+          
+          // Add new exercises and cache them
           for (const exercise of exercisesData) {
             if (exercise) {
               // Cache the exercise
