@@ -5,6 +5,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { Play, Pause, Clock, Volume2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import AudioGenerator from '../exercises/AudioGenerator';
 
 interface Question {
   id: string;
@@ -18,6 +19,7 @@ interface ListeningSectionProps {
     content: {
       audio_url?: string;
       prompt_it: string;
+      text_it?: string;
       questions?: Question[];
     };
   };
@@ -136,38 +138,51 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
         <p className="text-muted-foreground">{exercise.content.prompt_it}</p>
         
         <div className="flex flex-col items-center space-y-4 p-6 bg-muted/50 rounded-lg">
-          {exercise.content.audio_url && (
-            <audio
-              ref={audioRef}
-              onEnded={handleAudioEnded}
-              preload="metadata"
-            >
-              <source src={exercise.content.audio_url} type="audio/mpeg" />
-              Il tuo browser non supporta l'elemento audio.
-            </audio>
-          )}
-          
-          <div className="flex items-center gap-4">
-            {!isPlaying ? (
-              <Button 
-                onClick={handlePlay} 
-                disabled={playCount >= 2}
-                variant={playCount >= 2 ? "secondary" : "default"}
+          {/* Use AudioGenerator for dynamic audio generation */}
+          {exercise.content.audio_url && exercise.content.audio_url.startsWith('http') ? (
+            <>
+              <audio
+                ref={audioRef}
+                onEnded={handleAudioEnded}
+                preload="metadata"
               >
-                <Play className="w-4 h-4 mr-2" />
-                {playCount === 0 ? "Ascolta" : "Ascolta di nuovo"}
-              </Button>
-            ) : (
-              <Button onClick={handlePause} variant="secondary">
-                <Pause className="w-4 h-4 mr-2" />
-                Pausa
-              </Button>
-            )}
-          </div>
-          
-          <p className="text-xs text-muted-foreground">
-            Ascolti disponibili: {2 - playCount}/2
-          </p>
+                <source src={exercise.content.audio_url} type="audio/mpeg" />
+                Il tuo browser non supporta l'elemento audio.
+              </audio>
+              
+              <div className="flex items-center gap-4">
+                {!isPlaying ? (
+                  <Button 
+                    onClick={handlePlay} 
+                    disabled={playCount >= 2}
+                    variant={playCount >= 2 ? "secondary" : "default"}
+                  >
+                    <Play className="w-4 h-4 mr-2" />
+                    {playCount === 0 ? "Ascolta" : "Ascolta di nuovo"}
+                  </Button>
+                ) : (
+                  <Button onClick={handlePause} variant="secondary">
+                    <Pause className="w-4 h-4 mr-2" />
+                    Pausa
+                  </Button>
+                )}
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                Ascolti disponibili: {2 - playCount}/2
+              </p>
+            </>
+          ) : (
+            <AudioGenerator
+              text={exercise.content?.text_it || exercise.content?.prompt_it || 'Ciao, questo è un audio di esempio per l\'esercizio di ascolto.'}
+              exerciseId={exercise.id}
+              onAudioReady={(url) => {
+                if (exercise.content) {
+                  exercise.content.audio_url = url;
+                }
+              }}
+            />
+          )}
         </div>
 
         <div className="space-y-6">

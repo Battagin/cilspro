@@ -534,20 +534,20 @@ const Demo = () => {
           <div className="text-center space-y-6">
             <div className="bg-muted/50 p-6 rounded-xl">
               <h3 className="text-xl font-bold text-foreground mb-2">
-                ✨ Questa è solo l'anteprima!
+                ✨ Quer praticar mais exercícios?
               </h3>
               <p className="text-muted-foreground mb-4">
-                Accedi a simulazioni complete, feedback dettagliati e tracciamento progressi
+                Acesse exercícios organizados por competência com feedback detalhado
               </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Link to="/registrazione">
+                <Link to="/esercizi">
                   <Button variant="hero" size="lg">
-                    {t("startFreePrep")}
+                    Treinar por Competência
                   </Button>
                 </Link>
-                <Link to="/piani">
+                <Link to="/registrazione">
                   <Button variant="outline" size="lg">
-                    {t("tryAllFeatures")}
+                    {t("startFreePrep")}
                   </Button>
                 </Link>
               </div>

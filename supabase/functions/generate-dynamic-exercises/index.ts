@@ -83,28 +83,15 @@ serve(async (req) => {
       throw new Error('Impossibile generare esercizi');
     }
 
-    // Generate audio for listening exercises
-    if (skill_type === 'ascolto') {
-      for (const exercise of validExercises) {
-        if (exercise.audio_text) {
-          try {
-            const audioResponse = await fetch(`${req.url.replace('/generate-dynamic-exercises', '/generate-tts')}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                text: exercise.audio_text,
-                voice: 'alice'
-              })
-            });
-
-            if (audioResponse.ok) {
-              const audioData = await audioResponse.json();
-              exercise.audio_url = `data:audio/mp3;base64,${audioData.audioContent}`;
-            }
-          } catch (error) {
-            console.log('Errore generazione audio:', error);
-          }
-        }
+    // Process each valid exercise
+    for (const exercise of validExercises) {
+      // For listening exercises, we'll generate audio on demand in the frontend
+      // This ensures better performance and reduces generation time
+      if (skill_type === 'ascolto' && exercise.audio_text) {
+        // Store the text that will be used for TTS generation
+        exercise.text_it = exercise.audio_text;
+        // Mark that audio needs generation
+        exercise.audio_url = 'GENERATE_ON_DEMAND';
       }
     }
 
