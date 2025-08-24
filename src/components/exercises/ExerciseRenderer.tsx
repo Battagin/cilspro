@@ -145,57 +145,20 @@ const ExerciseRenderer: React.FC<ExerciseRendererProps> = ({
   };
 
   const renderAudioPlayer = () => {
-    // For listening exercises, we need to generate audio from text if no audio_url exists
     if (exercise.type === 'ascolto') {
-      // Check if we have audio_url or if we need to generate from content
-      if (exercise.content.audio_url && exercise.content.audio_url.startsWith('http')) {
-        // Use existing audio URL
-        return (
-          <Card className="mb-6">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <Button
-                  onClick={isPlaying ? handleAudioPause : handleAudioPlay}
-                  disabled={playCount >= 2}
-                  variant={playCount >= 2 ? "outline" : "default"}
-                  size="lg"
-                >
-                  {isPlaying ? (
-                    <Pause className="w-5 h-5 mr-2" />
-                  ) : (
-                    <Play className="w-5 h-5 mr-2" />
-                  )}
-                  {playCount >= 2 ? 'Audio esaurito' : `Ascolta (${2 - playCount}/2)`}
-                </Button>
-                <Volume2 className="w-5 h-5 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  Puoi ascoltare l'audio massimo 2 volte
-                </span>
-              </div>
-              
-              <audio
-                ref={audioRef}
-                src={exercise.content.audio_url}
-                onEnded={handleAudioEnded}
-                className="hidden"
-              />
-            </CardContent>
-          </Card>
-        );
-      } else {
-        // Generate audio from text content
-        const textToSpeak = exercise.content.text_it || exercise.content.prompt_it || '';
-        return (
-          <AudioGenerator
-            text={textToSpeak}
-            exerciseId={exercise.id}
-            onAudioReady={(url) => {
-              // Update the exercise with the generated audio URL
-              exercise.content.audio_url = url;
-            }}
-          />
-        );
-      }
+      // Ensure the audio reads both prompt and text when generating TTS
+      const textToSpeak = `${exercise.content.prompt_it}\n\n${exercise.content.text_it ?? ''}`.trim();
+      return (
+        <AudioGenerator
+          text={textToSpeak}
+          exerciseId={exercise.id}
+          originalUrl={exercise.content.audio_url}
+          onAudioReady={(url) => {
+            // Persist in-memory so renderer can reuse
+            exercise.content.audio_url = url;
+          }}
+        />
+      );
     }
     return null;
   };

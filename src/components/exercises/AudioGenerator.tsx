@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Pause, Volume2, Loader2 } from "lucide-react";
+import { Volume2, Loader2 } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
 
@@ -9,84 +9,127 @@ interface AudioGeneratorProps {
   text: string;
   onAudioReady: (audioUrl: string) => void;
   exerciseId: string;
+  originalUrl?: string;
 }
 
 const AudioGenerator: React.FC<AudioGeneratorProps> = ({ 
   text, 
   onAudioReady, 
-  exerciseId 
+  exerciseId,
+  originalUrl,
 }) => {
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [playCount, setPlayCount] = useState(0);
+  const [isFallbackTTS, setIsFallbackTTS] = useState(false);
+  const [diagnostics, setDiagnostics] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
-    if (text && !audioUrl) {
-      generateAudio();
-    }
-  }, [text]);
+    if (!text) return;
+    diagnoseAndPrepare();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, originalUrl]);
 
-  const generateAudio = async () => {
+  const logDiag = (msg: string) => {
+    console.log(`[AudioDiag ${exerciseId}]`, msg);
+    setDiagnostics((prev) => [...prev.slice(-10), msg]);
+  };
+
+  const validateOriginalAudio = async (url: string): Promise<boolean> => {
+    try {
+      logDiag(`Validando URL original: ${url}`);
+      const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (!resp.ok) {
+        logDiag(`Falha HTTP ${resp.status}`);
+        return false;
+      }
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.toLowerCase().includes('audio')) {
+        logDiag(`MIME inválido: ${ct}`);
+        return false;
+      }
+      const len = parseInt(resp.headers.get('content-length') || '0', 10);
+      if (len > 0 && len < 10240) {
+        logDiag(`Tamanho muito pequeno: ${len}`);
+        // não retorna ainda; ainda tentaremos metadata
+      }
+      // Testa metadata/duração
+      await new Promise<void>((resolve, reject) => {
+        const el = new Audio();
+        const onLoaded = () => {
+          if (el.duration && el.duration > 0) {
+            resolve();
+          } else {
+            reject(new Error('Duração zero'));
+          }
+        };
+        const onError = () => reject(new Error('Erro no carregamento do áudio'));
+        const timeout = setTimeout(() => reject(new Error('Timeout metadata')), 6000);
+        el.addEventListener('loadedmetadata', () => {
+          clearTimeout(timeout);
+          onLoaded();
+        });
+        el.addEventListener('error', () => {
+          clearTimeout(timeout);
+          onError();
+        });
+        el.preload = 'metadata';
+        el.src = url;
+      });
+      logDiag('Áudio original validado com sucesso');
+      return true;
+    } catch (e) {
+      logDiag(`Validação falhou: ${(e as Error).message}`);
+      return false;
+    }
+  };
+
+  const generateTTSFromText = async () => {
     try {
       setIsGenerating(true);
-
+      setIsFallbackTTS(true);
+      logDiag('Gerando TTS via ElevenLabs...');
       const { data, error } = await supabase.functions.invoke('generate-tts', {
-        body: { 
-          text: text,
-          voice: 'alice' // Italian female voice
-        }
+        body: { text, voice: 'alice' }
       });
-
       if (error) throw error;
-
-      if (data?.audioContent) {
-        // Convert base64 to blob and create URL
-        const binaryString = atob(data.audioContent);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-        const blob = new Blob([bytes], { type: 'audio/mpeg' });
-        const url = URL.createObjectURL(blob);
-        
-        setAudioUrl(url);
-        onAudioReady(url);
+      if (!data?.audioContent) throw new Error('TTS sem conteúdo');
+      if (data.audioContent.length < 10240) {
+        logDiag('TTS muito curto, possível bloqueio da API');
       }
-
-    } catch (error) {
-      console.error('Error generating audio:', error);
+      const binary = atob(data.audioContent);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+      setAudioUrl(url);
+      onAudioReady(url);
+      logDiag('TTS pronto e associado');
+    } catch (err) {
+      console.error('Erro no TTS:', err);
       toast({
-        title: "Errore audio",
-        description: "Impossibile generare l'audio. Verrà utilizzato un audio di esempio.",
-        variant: "destructive"
+        title: 'Erro no TTS',
+        description: 'Não foi possível gerar áudio agora.',
+        variant: 'destructive',
       });
-      
-      // Use fallback audio (empty audio data URL)
-      const fallbackUrl = 'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+Hsr2QcBSaO1vPUgC0ELnLG8N+SRAsUVLLn+7VhFgY+ltryxnkpBSB6yu7bjSIEMGvH8N2QQAsTU7Pt6qhXFAlFnN/tr2QdBSaN1/TVgyMFNW/H8N2QQAoUVbPo7bdiFAY9l9vyxnkqBSB6yu7ZjyQFLWbH8N2QQAoUVbTo7LVjFQY9l9vyxHwrBSF6yu7ZjSUENG7H8N2QQAsTUbPn9LdnBSF6yu7bjCQFLWXD8OGXTgoURK3d8K9oFAY';
-      setAudioUrl(fallbackUrl);
-      onAudioReady(fallbackUrl);
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const handlePlay = () => {
-    if (audioUrl && playCount < 2) {
-      const audio = new Audio(audioUrl);
-      audio.play();
-      setIsPlaying(true);
-      setPlayCount(prev => prev + 1);
-      
-      audio.onended = () => {
-        setIsPlaying(false);
-      };
+  const diagnoseAndPrepare = async () => {
+    // Tenta áudio original primeiro (se existir e não for marcador de geração)
+    if (originalUrl && originalUrl !== 'GENERATE_ON_DEMAND') {
+      const ok = await validateOriginalAudio(originalUrl);
+      if (ok) {
+        setIsFallbackTTS(false);
+        setAudioUrl(originalUrl);
+        onAudioReady(originalUrl);
+        return;
+      }
+      logDiag('Original falhou — ativando fallback TTS.');
     }
-  };
-
-  const handlePause = () => {
-    setIsPlaying(false);
+    await generateTTSFromText();
   };
 
   if (isGenerating) {
@@ -96,7 +139,7 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
           <div className="flex items-center gap-4">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
             <span className="text-muted-foreground">
-              Generando áudio com IA... Aguarde alguns segundos.
+              Gerando áudio com IA... aguarde.
             </span>
           </div>
         </CardContent>
@@ -113,7 +156,7 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
             <span className="text-muted-foreground">
               Áudio não disponível
             </span>
-            <Button onClick={generateAudio} variant="outline" size="sm">
+            <Button onClick={diagnoseAndPrepare} variant="outline" size="sm">
               Tentar novamente
             </Button>
           </div>
@@ -124,26 +167,29 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
 
   return (
     <Card className="mb-6">
-      <CardContent className="p-6">
-        <div className="flex items-center gap-4">
-          <Button
-            onClick={isPlaying ? handlePause : handlePlay}
-            disabled={playCount >= 2}
-            variant={playCount >= 2 ? "outline" : "default"}
-            size="lg"
-          >
-            {isPlaying ? (
-              <Pause className="w-5 h-5 mr-2" />
-            ) : (
-              <Play className="w-5 h-5 mr-2" />
-            )}
-            {playCount >= 2 ? 'Áudio esgotado' : `Escutar (${2 - playCount}/2)`}
-          </Button>
-          <Volume2 className="w-5 h-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">
-            Você pode escutar o áudio no máximo 2 vezes
-          </span>
+      <CardContent className="p-6 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Volume2 className="w-5 h-5 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Use os controles para reproduzir, pausar e avançar.</span>
+          </div>
+          {isFallbackTTS && (
+            <div className="text-xs text-muted-foreground">
+              Áudio gerado automaticamente (TTS)
+            </div>
+          )}
         </div>
+        <audio
+          controls
+          preload="metadata"
+          src={audioUrl}
+          aria-label="Ascolta l’audio dell’esercizio"
+          className="w-full"
+          onError={() => logDiag('Erro no elemento de áudio')}
+        />
+        {isFallbackTTS && (
+          <div className="text-xs text-muted-foreground">Modalidade de contingência TTS</div>
+        )}
       </CardContent>
     </Card>
   );
