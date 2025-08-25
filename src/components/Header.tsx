@@ -23,8 +23,8 @@ const Header = () => {
           <a href="/#features" className="text-foreground hover:text-primary transition-smooth font-medium">
             Funzionalità
           </a>
-          <Link to="/demo" className="text-foreground hover:text-primary transition-smooth font-medium">
-            Demo
+          <Link to="/exercicios" className="text-foreground hover:text-primary transition-smooth font-medium">
+            Pratica di esercizi
           </Link>
           <Link to="/piani" className="text-foreground hover:text-primary transition-smooth font-medium">
             Piani

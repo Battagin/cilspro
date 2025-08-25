@@ -50,7 +50,7 @@ export const ExamResults: React.FC<ExamResultsProps> = ({ results, onRestart }) 
     <div className="space-y-6">
       <Card>
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Simulazione Demo Completata!</CardTitle>
+          <CardTitle className="text-2xl">Pratica di esercizi Demo Completata!</CardTitle>
           <div className="space-y-2">
             <div className="text-4xl font-bold">{Math.round(totalScore)}/100</div>
             <Badge 

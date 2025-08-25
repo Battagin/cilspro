@@ -104,7 +104,7 @@ const Dashboard = () => {
 
   const availableSimulations = [
     {
-      title: "Simulazione Completa CILS B1",
+      title: "Pratica di esercizi Completa CILS B1",
       description: "Test completo con tutte e 4 le competenze",
       duration: "3 ore",
       competencies: ["Ascolto", "Lettura", "Scrittura", "Produzione Orale"],
@@ -304,11 +304,11 @@ const Dashboard = () => {
                 </p>
               </div>
               <Button 
-                onClick={() => navigate('/demo')}
+                onClick={() => navigate('/exercicios')}
                 className="shrink-0"
               >
                 <Play className="w-5 h-5 mr-2" />
-                Inizia Simulazione Esame Completo
+                Pratica di esercizi gratis
               </Button>
             </div>
           </CardContent>
@@ -351,9 +351,9 @@ const Dashboard = () => {
                           </div>
                         </div>
                       </div>
-                      <Button onClick={() => navigate('/demo')}>
+                      <Button onClick={() => navigate('/exercicios')}>
                         <Play className="w-4 h-4 mr-2" />
-                        Inizia Simulazione
+                        Inizia Pratica
                       </Button>
                     </div>
                   </div>

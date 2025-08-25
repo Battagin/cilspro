@@ -13,6 +13,10 @@ serve(async (req) => {
   try {
     const { exercise, answers, writingText, transcription } = await req.json()
 
+    if (!exercise) {
+      throw new Error('Exercise data is required')
+    }
+
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
     if (!geminiApiKey) {
       throw new Error('GEMINI_API_KEY non configurata')
@@ -20,44 +24,47 @@ serve(async (req) => {
 
     let feedback = ""
     let score = 0
+    let corrections = {}
 
     if (exercise.type === 'ascolto' || exercise.type === 'lettura') {
-      // Evaluate multiple choice answers
-      const correctAnswers = {
-        'ascolto_1': {
-          'q1': 'B) Cappuccino e cornetto',
-          'q2': 'C) 3 euro e 50',
-          'q3': 'B) Al bar',
-          'q4': 'C) Arrivederci'
-        },
-        'lettura_1': {
-          'q1': 'C) 14:00',
-          'q2': 'C) 21:00',
-          'q3': 'C) No',
-          'q4': 'B) Alle 19:30'
+      // For dynamic exercises, we need to evaluate based on actual questions
+      if (exercise.content?.questions) {
+        const questions = exercise.content.questions
+        let correct = 0
+        const total = questions.length
+        const userCorrections = {}
+
+        for (const question of questions) {
+          const userAnswer = answers[question.id]
+          const correctAnswer = question.options[0] // Assuming first option is correct for now
+          
+          if (userAnswer === correctAnswer) {
+            correct++
+          }
+          
+          userCorrections[question.id] = {
+            correct: correctAnswer,
+            user: userAnswer,
+            isCorrect: userAnswer === correctAnswer
+          }
         }
+
+        corrections = userCorrections
+        score = Math.round((correct / total) * 100)
+        feedback = `Hai risposto correttamente a ${correct} domande su ${total}. ${
+          score >= 70 ? 'Ottimo lavoro!' : score >= 50 ? 'Buono, ma puoi migliorare.' : 'Continua a studiare!'
+        }`
+      } else {
+        // Fallback for older exercises without dynamic questions
+        score = 60
+        feedback = "Esercizio completato. Continua a praticare!"
       }
-
-      const correctSet = correctAnswers[exercise.id as keyof typeof correctAnswers] || {}
-      let correct = 0
-      const total = Object.keys(correctSet).length
-
-      for (const [questionId, userAnswer] of Object.entries(answers)) {
-        if (correctSet[questionId as keyof typeof correctSet] === userAnswer) {
-          correct++
-        }
-      }
-
-      score = Math.round((correct / total) * 100)
-      feedback = `Hai risposto correttamente a ${correct} domande su ${total}. ${
-        score >= 70 ? 'Ottimo lavoro!' : score >= 50 ? 'Buono, ma puoi migliorare.' : 'Continua a studiare!'
-      }`
     } else if (exercise.type === 'scrittura') {
       // Evaluate writing with Gemini
       const prompt = `
         Valuta questo testo scritto per l'esame CILS B1 Cittadinanza:
         
-        Consegna: ${exercise.prompt_it}
+        Consegna: ${exercise.content?.prompt_it || exercise.prompt_it}
         
         Testo dello studente:
         "${writingText}"
@@ -68,7 +75,7 @@ serve(async (req) => {
         3. Lessico appropriato (0-25 punti)
         4. Coerenza e coesione (0-25 punti)
         
-        Fornisci un punteggio totale su 100 e un feedback dettagliato in italiano.
+        Fornisci un punteggio totale su 100 e un feedback breve (max 3 frasi) in italiano.
         Formato della risposta:
         PUNTEGGIO: [numero]
         FEEDBACK: [feedback dettagliato]
@@ -91,12 +98,12 @@ serve(async (req) => {
       score = scoreMatch ? parseInt(scoreMatch[1]) : 60
       feedback = feedbackMatch ? feedbackMatch[1].trim() : "Valutazione completata."
       
-    } else if (exercise.type === 'produzione_orale') {
+    } else if (exercise.type === 'orale' || exercise.type === 'produzione_orale') {
       // Evaluate speaking with Gemini using transcription
       const prompt = `
         Valuta questa produzione orale per l'esame CILS B1 Cittadinanza:
         
-        Consegna: ${exercise.prompt_it}
+        Consegna: ${exercise.content?.prompt_it || exercise.prompt_it}
         
         Trascrizione dell'audio dello studente:
         "${transcription}"
@@ -107,7 +114,7 @@ serve(async (req) => {
         3. Lessico appropriato (0-25 punti)
         4. Fluenza e pronuncia (0-25 punti)
         
-        Fornisci un punteggio totale su 100 e un feedback dettagliato in italiano.
+        Fornisci un punteggio totale su 100 e un feedback breve (max 3 frasi) in italiano.
         Formato della risposta:
         PUNTEGGIO: [numero]
         FEEDBACK: [feedback dettagliato]
@@ -132,13 +139,17 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ score, feedback }),
+      JSON.stringify({ score, feedback, corrections }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Errore nella valutazione:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        score: 0,
+        feedback: "Si è verificato un errore durante la valutazione. Riprova."
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

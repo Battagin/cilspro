@@ -31,7 +31,7 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({
   };
 
   const renderMultipleChoiceFeedback = () => {
-    if (!feedback.results) return null;
+    if (!feedback.corrections) return null;
 
     return (
       <div className="space-y-4">
@@ -43,9 +43,9 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({
         </div>
 
         <div className="space-y-3">
-          {Object.entries(feedback.results).map(([questionId, result]: [string, any]) => (
+          {Object.entries(feedback.corrections).map(([questionId, result]: [string, any]) => (
             <div key={questionId} className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              {result.correct ? (
+              {result.isCorrect ? (
                 <CheckCircle className="w-5 h-5 text-green-600" />
               ) : (
                 <XCircle className="w-5 h-5 text-red-600" />
@@ -53,11 +53,11 @@ const FeedbackCard: React.FC<FeedbackCardProps> = ({
               
               <div className="flex-1">
                 <p className="text-sm">
-                  <strong>Tua risposta:</strong> {result.user_answer}
+                  <strong>Tua risposta:</strong> {result.user}
                 </p>
-                {!result.correct && (
+                {!result.isCorrect && (
                   <p className="text-sm text-muted-foreground">
-                    <strong>Risposta corretta:</strong> {result.correct_answer}
+                    <strong>Risposta corretta:</strong> {result.correct}
                   </p>
                 )}
               </div>

@@ -27,7 +27,7 @@ const Footer = () => {
             <ul className="space-y-2 text-sm">
               <li><Link to="/#features" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Funzionalità</Link></li>
               <li><Link to="/piani" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Piani</Link></li>
-              <li><Link to="/demo" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Simulazioni</Link></li>
+              <li><Link to="/exercicios" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Pratica di esercizi</Link></li>
               <li><Link to="/allenamento-gratuito" className="text-primary-foreground/80 hover:text-secondary transition-smooth">Esercizi</Link></li>
             </ul>
           </div>

@@ -141,10 +141,8 @@ const ExerciseClient: React.FC<ExerciseClientProps> = ({ exerciseType, exerciseS
       if (['ascolto', 'lettura'].includes(exerciseType)) {
         const { data, error } = await supabase.functions.invoke('evaluate-exercise', {
           body: {
-            exercise_id: exercise.id,
-            exercise_type: exerciseType,
-            answers: answers,
-            answer_key: exercise.answer_key
+            exercise: exercise,
+            answers: answers
           }
         });
 
@@ -155,10 +153,8 @@ const ExerciseClient: React.FC<ExerciseClientProps> = ({ exerciseType, exerciseS
       else if (exerciseType === 'scrittura') {
         const { data, error } = await supabase.functions.invoke('evaluate-exercise', {
           body: {
-            exercise_id: exercise.id,
-            exercise_type: exerciseType,
-            text: answers.text || '',
-            prompt: exercise.content.prompt_it
+            exercise: exercise,
+            writingText: answers.text || ''
           }
         });
 
@@ -169,27 +165,32 @@ const ExerciseClient: React.FC<ExerciseClientProps> = ({ exerciseType, exerciseS
       else if (exerciseType === 'orale' || exerciseType === 'produzione_orale') {
         if (answers.audioBlob) {
           // First transcribe the audio
-          const formData = new FormData();
-          formData.append('audio', answers.audioBlob, 'recording.wav');
-          
-          const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
-            body: formData
-          });
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Audio = (reader.result as string).split(',')[1];
+            
+            const { data: transcribeData, error: transcribeError } = await supabase.functions.invoke('transcribe-audio', {
+              body: { audio: base64Audio }
+            });
 
-          if (transcribeError) throw transcribeError;
+            if (transcribeError) throw transcribeError;
 
-          // Then evaluate the transcription
-          const { data, error } = await supabase.functions.invoke('evaluate-exercise', {
-            body: {
-              exercise_id: exercise.id,
-              exercise_type: 'produzione_orale',
-              transcription: transcribeData.transcription,
-              prompt: exercise.content.prompt_it
-            }
-          });
+            // Then evaluate the transcription
+            const { data, error } = await supabase.functions.invoke('evaluate-exercise', {
+              body: {
+                exercise: exercise,
+                transcription: transcribeData.text || transcribeData.transcription
+              }
+            });
 
-          if (error) throw error;
-          setFeedback(data);
+            if (error) throw error;
+            setFeedback(data);
+            setShowResults(true);
+            setTimerActive(false);
+            setSubmitting(false);
+          };
+          reader.readAsDataURL(answers.audioBlob);
+          return; // Don't continue to the rest of the function
         } else {
           throw new Error('Nessuna registrazione audio trovata');
         }
@@ -220,7 +221,7 @@ const ExerciseClient: React.FC<ExerciseClientProps> = ({ exerciseType, exerciseS
     if (exerciseType === 'lettura' || exerciseType === 'orale') {
       return `/esercizi/${exerciseType}`;
     }
-    return '/esercizi';
+    return '/exercicios';
   };
 
   if (loading) {

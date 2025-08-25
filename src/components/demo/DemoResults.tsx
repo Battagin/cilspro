@@ -60,9 +60,9 @@ const DemoResults: React.FC<DemoResultsProps> = ({ results, onRestart }) => {
           <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <CardTitle className="text-2xl">Simulazione Demo Completata!</CardTitle>
+          <CardTitle className="text-2xl">Pratica di esercizi Demo Completata!</CardTitle>
           <p className="text-muted-foreground">
-            Ecco i risultati della tua simulazione CILS B1 Cittadinanza
+            Ecco i risultati della tua pratica CILS B1 Cittadinanza
           </p>
         </CardHeader>
         <CardContent className="space-y-6">

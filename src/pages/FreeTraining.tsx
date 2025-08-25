@@ -56,7 +56,7 @@ const FreeTraining = () => {
     {
       icon: Mic,
       title: t("produzione_orale"),
-      description: "1 simulazione di produzione orale",
+      description: "1 pratica di produzione orale",
       available: 1,
       total: 30,
       color: "bg-red-50 text-red-600"

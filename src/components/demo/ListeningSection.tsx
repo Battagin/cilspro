@@ -49,8 +49,6 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
   }, [timeLeft, isCompleted]);
 
   const handlePlay = () => {
-    if (playCount >= 2) return;
-    
     if (audioRef.current) {
       audioRef.current.play();
       setIsPlaying(true);
@@ -154,8 +152,7 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
                 {!isPlaying ? (
                   <Button 
                     onClick={handlePlay} 
-                    disabled={playCount >= 2}
-                    variant={playCount >= 2 ? "secondary" : "default"}
+                    variant="default"
                   >
                     <Play className="w-4 h-4 mr-2" />
                     {playCount === 0 ? "Ascolta" : "Ascolta di nuovo"}
@@ -169,7 +166,7 @@ const ListeningSection: React.FC<ListeningSectionProps> = ({
               </div>
               
               <p className="text-xs text-muted-foreground">
-                Ascolti disponibili: {2 - playCount}/2
+                Ascolta senza limiti durante i test
               </p>
             </>
           ) : (

@@ -51,7 +51,7 @@ const ExerciseRenderer: React.FC<ExerciseRendererProps> = ({
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleAudioPlay = () => {
-    if (audioRef.current && playCount < 2) {
+    if (audioRef.current) {
       if (!timerActive) {
         onStartTimer();
       }

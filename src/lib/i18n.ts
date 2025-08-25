@@ -75,9 +75,9 @@ export const translations: Record<string, Translations> = {
     
     // Hero
     heroTitle: "Preparati alla CILS B1 Cittadinanza con CILSpro",
-    heroSubtitle: "Piattaforma completa di preparazione per l'esame CILS B1 Cittadinanza. Simulazioni ufficiali, esercizi interattivi e feedback con IA per accelerare la tua approvazione.",
+    heroSubtitle: "Piattaforma completa di preparazione per l'esame CILS B1 Cittadinanza. Pratica di esercizi ufficiali, esercizi interattivi e feedback con IA per accelerare la tua approvazione.",
     startFreePrep: "Inizia la preparazione gratuita",
-    viewDemo: "Vedi simulazione demo",
+    viewDemo: "Vedi pratica di esercizi demo",
     tryAllFeatures: "Prova tutte le funzionalità",
     startNow: "Comincia ora",
     
@@ -203,9 +203,9 @@ export const translations: Record<string, Translations> = {
     
     // Hero
     heroTitle: "Prepare-se para o CILS B1 Cidadania com CILSpro",
-    heroSubtitle: "Plataforma completa de preparação para o exame CILS B1 Cidadania. Simulações oficiais, exercícios interativos e feedback com IA para acelerar sua aprovação.",
+    heroSubtitle: "Plataforma completa de preparação para o exame CILS B1 Cidadania. Prática de exercícios oficiais, exercícios interativos e feedback com IA para acelerar sua aprovação.",
     startFreePrep: "Iniciar preparação gratuita",
-    viewDemo: "Ver simulação demo",
+    viewDemo: "Ver prática de exercícios demo",
     tryAllFeatures: "Testar todas as funcionalidades",
     startNow: "Começar agora",
     

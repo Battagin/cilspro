@@ -34,9 +34,9 @@ const Hero = () => {
                   {t("startFreePrep")}
                 </Button>
               </Link>
-              <Link to="/demo">
+              <Link to="/exercicios">
                 <Button variant="outline" size="lg" className="text-lg px-8 py-6 w-full sm:w-auto">
-                  🎯 Inizia Simulazione Esame Completo
+                  🎯 Pratica di esercizi gratis
                 </Button>
               </Link>
             </div>
@@ -63,7 +63,7 @@ const Hero = () => {
               <div className="flex items-center gap-3">
                 <Award className="w-5 h-5 text-secondary" />
                 <span className="text-sm font-medium text-muted-foreground">
-                  Simulazione 100% ufficiale
+                  Pratica di esercizi 100% ufficiale
                 </span>
               </div>
             </div>
