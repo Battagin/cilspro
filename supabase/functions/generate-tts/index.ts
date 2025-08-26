@@ -88,19 +88,21 @@ serve(async (req) => {
       console.log('Generating dialogue for listening exercise')
       
       const dialoguePrompt = `
-        Crea un dialogo originale in italiano (nível B1) basato su questo contesto:
+        Crea un dialogo originale in italiano (livello B1) basato su questo contesto:
         "${text}"
         
         REGOLE IMPORTANTI:
-        - NON leggere il testo dell'esercizio
-        - Crea solo il dialogo con 2 personaggi (120-180 parole)
-        - Usa nomi italiani: maschili (Marco, Luca, Giovanni, etc.) o femminili (Maria, Anna, Giulia, etc.)
-        - Formato: "Nome: [fala]" per ogni turno
-        - Almeno 3 scambi per persona
-        - Linguaggio naturale, nível B1
+        - NON leggere il testo dell'esercizio o frasi tecniche
+        - Crea SOLO il dialogo naturale con 2 personaggi (150-200 parole)
+        - Usa nomi italiani: maschili (Marco, Luca, Giovanni, Alessandro, Francesco) o femminili (Maria, Anna, Giulia, Sofia, Francesca)
+        - Formato: "Nome: [battuta]" per ogni turno
+        - MINIMO 4 scambi per persona (8 battute totali)
+        - Linguaggio naturale e fluido, livello B1
+        - Dialogo deve durare almeno 20-30 secondi quando letto
         - Tema coerente con il contesto dell'esercizio
+        - Includi dettagli specifici e conversazione realistica
         
-        Restituisci SOLO il dialogo, senza prefazioni o spiegazioni.
+        Restituisci SOLO il dialogo, senza prefazioni, spiegazioni o note tecniche.
       `
 
       try {

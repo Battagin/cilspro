@@ -181,11 +181,11 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Volume2 className="w-5 h-5 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Use os controles para reproduzir, pausar e avançar.</span>
+            <span className="text-sm text-muted-foreground">Usa i controlli per riprodurre, mettere in pausa e avanzare.</span>
           </div>
           {isFallbackTTS && (
             <div className="text-xs text-muted-foreground">
-              Áudio gerado automaticamente (TTS)
+              Audio generato automaticamente (TTS)
             </div>
           )}
         </div>
@@ -198,7 +198,7 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
           onError={() => logDiag('Erro no elemento de áudio')}
         />
         {isFallbackTTS && (
-          <div className="text-xs text-muted-foreground">Modalidade de contingência TTS</div>
+          <div className="text-xs text-muted-foreground">Modalità di contingenza TTS</div>
         )}
       </CardContent>
     </Card>
