@@ -179,7 +179,8 @@ const ExerciseClient: React.FC<ExerciseClientProps> = ({ exerciseType, exerciseS
             const { data, error } = await supabase.functions.invoke('evaluate-exercise', {
               body: {
                 exercise: exercise,
-                transcription: transcribeData.text || transcribeData.transcription
+                transcription: transcribeData.text || transcribeData.transcription,
+                duration_seconds: answers.recordingDuration || 0
               }
             });
 

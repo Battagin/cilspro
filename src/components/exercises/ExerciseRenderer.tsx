@@ -105,7 +105,8 @@ const ExerciseRenderer: React.FC<ExerciseRendererProps> = ({
         const blob = new Blob(chunks, { type: 'audio/wav' });
         onAnswersChange({
           ...answers,
-          audioBlob: blob
+          audioBlob: blob,
+          recordingDuration: recordingTime
         });
         stream.getTracks().forEach(track => track.stop());
       };
@@ -146,11 +147,11 @@ const ExerciseRenderer: React.FC<ExerciseRendererProps> = ({
 
   const renderAudioPlayer = () => {
     if (exercise.type === 'ascolto') {
-      // Ensure the audio reads both prompt and text when generating TTS
-      const textToSpeak = `${exercise.content.prompt_it}\n\n${exercise.content.text_it ?? ''}`.trim();
+      // For listening exercises, pass the full context for dialogue generation
+      const exerciseContext = `${exercise.content.prompt_it}${exercise.content.text_it ? '\n\nContesto: ' + exercise.content.text_it : ''}`;
       return (
         <AudioGenerator
-          text={textToSpeak}
+          text={exerciseContext}
           exerciseId={exercise.id}
           originalUrl={exercise.content.audio_url}
           onAudioReady={(url) => {

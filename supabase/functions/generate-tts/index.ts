@@ -65,7 +65,7 @@ serve(async (req) => {
   }
 
   try {
-    const { text, voice = 'alice' } = await req.json()
+    const { text, voice = 'alice', isListeningExercise = false } = await req.json()
 
     if (!text) {
       throw new Error('Texto é obrigatório')
@@ -74,6 +74,55 @@ serve(async (req) => {
     const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
     if (!elevenlabsApiKey) {
       throw new Error('ELEVENLABS_API_KEY não configurada')
+    }
+
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
+    if (!geminiApiKey) {
+      throw new Error('GEMINI_API_KEY não configurada')
+    }
+
+    let textForTTS = text
+
+    // If it's a listening exercise, generate dialogue instead of reading the prompt
+    if (isListeningExercise) {
+      console.log('Generating dialogue for listening exercise')
+      
+      const dialoguePrompt = `
+        Crea un dialogo originale in italiano (nível B1) basato su questo contesto:
+        "${text}"
+        
+        REGOLE IMPORTANTI:
+        - NON leggere il testo dell'esercizio
+        - Crea solo il dialogo con 2 personaggi (120-180 parole)
+        - Usa nomi italiani: maschili (Marco, Luca, Giovanni, etc.) o femminili (Maria, Anna, Giulia, etc.)
+        - Formato: "Nome: [fala]" per ogni turno
+        - Almeno 3 scambi per persona
+        - Linguaggio naturale, nível B1
+        - Tema coerente con il contesto dell'esercizio
+        
+        Restituisci SOLO il dialogo, senza prefazioni o spiegazioni.
+      `
+
+      try {
+        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: dialoguePrompt }] }]
+          })
+        })
+
+        const geminiData = await geminiResponse.json()
+        const generatedDialogue = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+        
+        if (generatedDialogue) {
+          textForTTS = generatedDialogue
+          console.log('Generated dialogue:', textForTTS)
+        }
+      } catch (error) {
+        console.error('Error generating dialogue with Gemini:', error)
+        // Fallback to original text if Gemini fails
+      }
     }
 
     // Voice mapping with better Italian voices
@@ -85,9 +134,9 @@ serve(async (req) => {
     }
 
     // Check if text contains dialogue
-    if (hasDialogue(text)) {
+    if (hasDialogue(textForTTS)) {
       console.log('Dialogue detected, generating multi-voice audio')
-      const dialogueParts = parseDialogue(text)
+      const dialogueParts = parseDialogue(textForTTS)
       const audioSegments = []
       
       for (const part of dialogueParts) {
@@ -139,7 +188,7 @@ serve(async (req) => {
         'Accept': 'audio/mpeg'
       },
       body: JSON.stringify({
-        text,
+        text: textForTTS,
         model_id: 'eleven_multilingual_v2',
         voice_settings: {
           stability: 0.5,

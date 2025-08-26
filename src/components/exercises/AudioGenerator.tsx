@@ -89,8 +89,18 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
       setIsGenerating(true);
       setIsFallbackTTS(true);
       logDiag('Gerando TTS via ElevenLabs...');
+      
+      // Check if this is a listening exercise that needs dialogue generation
+      const isListeningExercise = text.toLowerCase().includes('dialogo') || 
+                                 text.toLowerCase().includes('ascolta') ||
+                                 text.toLowerCase().includes('conversazione');
+      
       const { data, error } = await supabase.functions.invoke('generate-tts', {
-        body: { text, voice: 'alice' }
+        body: { 
+          text, 
+          voice: 'alice',
+          isListeningExercise 
+        }
       });
       if (error) throw error;
       if (!data?.audioContent) throw new Error('TTS sem conteúdo');
