@@ -3,7 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "src/index.js",
   "scripts": {
+    "start": "node src/index.js",
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
