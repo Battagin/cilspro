@@ -71,21 +71,21 @@ serve(async (req) => {
       throw new Error('Texto é obrigatório')
     }
 
-    const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY')
-    if (!elevenlabsApiKey) {
-      throw new Error('ELEVENLABS_API_KEY não configurada')
+    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_API_KEY')
+    if (!googleApiKey) {
+      throw new Error('GOOGLE_CLOUD_API_KEY não configurada')
     }
 
-    const geminiApiKey = Deno.env.get('GEMINI_API_KEY')
-    if (!geminiApiKey) {
-      throw new Error('GEMINI_API_KEY não configurada')
+    const googleProjectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID')
+    if (!googleProjectId) {
+      throw new Error('GOOGLE_CLOUD_PROJECT_ID não configurado')
     }
 
     let textForTTS = text
 
-    // If it's a listening exercise, generate dialogue instead of reading the prompt
+    // If it's a listening exercise, generate dialogue using Google Vertex AI (Gemini)
     if (isListeningExercise) {
-      console.log('Generating dialogue for listening exercise')
+      console.log('Generating dialogue for listening exercise with Vertex AI')
       
       const dialoguePrompt = `
         Crea un dialogo originale in italiano (livello B1) basato su questo contesto:
@@ -106,70 +106,96 @@ serve(async (req) => {
       `
 
       try {
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${geminiApiKey}`, {
+        const vertexResponse = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${googleProjectId}/locations/us-central1/publishers/google/models/gemini-1.5-flash:generateContent`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Authorization': `Bearer ${googleApiKey}`,
+            'Content-Type': 'application/json' 
+          },
           body: JSON.stringify({
-            contents: [{ parts: [{ text: dialoguePrompt }] }]
+            contents: [{ 
+              parts: [{ text: dialoguePrompt }] 
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1000
+            }
           })
         })
 
-        const geminiData = await geminiResponse.json()
-        const generatedDialogue = geminiData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-        
-        if (generatedDialogue) {
-          textForTTS = generatedDialogue
-          console.log('Generated dialogue:', textForTTS)
+        if (vertexResponse.ok) {
+          const vertexData = await vertexResponse.json()
+          const generatedDialogue = vertexData.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+          
+          if (generatedDialogue) {
+            textForTTS = generatedDialogue
+            console.log('Generated dialogue with Vertex AI:', textForTTS)
+          }
+        } else {
+          console.error('Vertex AI error:', await vertexResponse.text())
         }
       } catch (error) {
-        console.error('Error generating dialogue with Gemini:', error)
-        // Fallback to original text if Gemini fails
+        console.error('Error generating dialogue with Vertex AI:', error)
+        // Fallback to original text if Vertex AI fails
       }
     }
 
-    // Voice mapping with better Italian voices
-    const voiceIds = {
-      'alice': 'Xb7hH8MSUJpSbSDYk0k2', // Alice (female)
-      'marco': 'TX3LPaxmHKxFdv7VOQHJ', // Liam (male)
-      'female': '9BWtsMINqrJLrRacOk9x', // Aria (female)
-      'male': 'bIHbv24MWmeRgasZH58o'  // Will (male)
+    // Voice mapping for Google Cloud Text-to-Speech (Italian voices)
+    const voiceMapping = {
+      'alice': { name: 'it-IT-Elsa', ssmlGender: 'FEMALE' },
+      'marco': { name: 'it-IT-Cosimo', ssmlGender: 'MALE' },
+      'female': { name: 'it-IT-Elsa', ssmlGender: 'FEMALE' },
+      'male': { name: 'it-IT-Cosimo', ssmlGender: 'MALE' }
     }
 
     // Check if text contains dialogue
     if (hasDialogue(textForTTS)) {
-      console.log('Dialogue detected, generating multi-voice audio')
+      console.log('Dialogue detected, generating multi-voice audio with Google TTS')
       const dialogueParts = parseDialogue(textForTTS)
       const audioSegments = []
       
       for (const part of dialogueParts) {
-        const voiceId = part.gender === 'male' ? voiceIds.male : voiceIds.female
+        const selectedVoice = part.gender === 'male' ? voiceMapping.male : voiceMapping.female
         
-        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
+        const ttsRequest = {
+          input: { text: part.text },
+          voice: {
+            languageCode: 'it-IT',
+            name: selectedVoice.name,
+            ssmlGender: selectedVoice.ssmlGender
+          },
+          audioConfig: {
+            audioEncoding: 'MP3',
+            speakingRate: 1.0,
+            pitch: 0.0
+          }
+        }
+
+        const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleApiKey}`, {
           method: 'POST',
           headers: {
-            'xi-api-key': elevenlabsApiKey,
             'Content-Type': 'application/json',
-            'Accept': 'audio/mpeg'
           },
-          body: JSON.stringify({
-            text: part.text,
-            model_id: 'eleven_multilingual_v2',
-            voice_settings: {
-              stability: 0.5,
-              similarity_boost: 0.75,
-              style: 0.0,
-              use_speaker_boost: true
-            }
-          })
+          body: JSON.stringify(ttsRequest)
         })
         
         if (response.ok) {
-          const arrayBuffer = await response.arrayBuffer()
-          audioSegments.push(new Uint8Array(arrayBuffer))
+          const data = await response.json()
+          if (data.audioContent) {
+            // Decode base64 to binary
+            const binaryAudio = atob(data.audioContent)
+            const audioBytes = new Uint8Array(binaryAudio.length)
+            for (let i = 0; i < binaryAudio.length; i++) {
+              audioBytes[i] = binaryAudio.charCodeAt(i)
+            }
+            audioSegments.push(audioBytes)
+          }
+        } else {
+          console.error('Google TTS error:', await response.text())
         }
       }
       
-      // Combine all segments into a single MP3 by concatenating frames
+      // Combine all segments into a single MP3
       if (audioSegments.length > 0) {
         const totalLength = audioSegments.reduce((acc, seg) => acc + seg.length, 0)
         const combined = new Uint8Array(totalLength)
@@ -186,30 +212,33 @@ serve(async (req) => {
       }
     }
 
-    // Single voice generation (original logic)
-    const selectedVoiceId = voiceIds[voice as keyof typeof voiceIds] || voiceIds.alice
+    // Single voice generation using Google Cloud TTS
+    const selectedVoice = voiceMapping[voice as keyof typeof voiceMapping] || voiceMapping.alice
 
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${selectedVoiceId}`, {
+    const ttsRequest = {
+      input: { text: textForTTS },
+      voice: {
+        languageCode: 'it-IT',
+        name: selectedVoice.name,
+        ssmlGender: selectedVoice.ssmlGender
+      },
+      audioConfig: {
+        audioEncoding: 'MP3',
+        speakingRate: 1.0,
+        pitch: 0.0
+      }
+    }
+
+    const response = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleApiKey}`, {
       method: 'POST',
       headers: {
-        'xi-api-key': elevenlabsApiKey,
         'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg'
       },
-      body: JSON.stringify({
-        text: textForTTS,
-        model_id: 'eleven_multilingual_v2',
-        voice_settings: {
-          stability: 0.5,
-          similarity_boost: 0.75,
-          style: 0.0,
-          use_speaker_boost: true
-        }
-      })
+      body: JSON.stringify(ttsRequest)
     })
 
     if (!response.ok) {
-      console.error('ElevenLabs API error:', await response.text())
+      console.error('Google TTS API error:', await response.text())
       // Fallback para mock de áudio se API falhar
       const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
       return new Response(
@@ -218,12 +247,19 @@ serve(async (req) => {
       )
     }
 
-    // Convert audio buffer to base64 safely (no spread to avoid call stack issues)
-    const arrayBuffer = await response.arrayBuffer()
-    const base64Audio = base64Encode(new Uint8Array(arrayBuffer))
+    const data = await response.json()
+    
+    if (!data.audioContent) {
+      console.error('No audio content received from Google TTS')
+      const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
+      return new Response(
+        JSON.stringify({ audioContent: mockAudioBase64, dialogueText: textForTTS }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
 
     return new Response(
-      JSON.stringify({ audioContent: base64Audio, dialogueText: textForTTS }),
+      JSON.stringify({ audioContent: data.audioContent, dialogueText: textForTTS }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
@@ -232,7 +268,7 @@ serve(async (req) => {
     // Retorna mock de áudio em caso de erro
     const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
     return new Response(
-      JSON.stringify({ audioContent: mockAudioBase64, dialogueText: 'Errore TTS: usando testo originale.' }),
+      JSON.stringify({ audioContent: mockAudioBase64, dialogueText: 'Errore TTS: usando Google Cloud Text-to-Speech.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
