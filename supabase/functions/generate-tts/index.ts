@@ -180,7 +180,7 @@ serve(async (req) => {
         }
         const base64Audio = base64Encode(combined)
         return new Response(
-          JSON.stringify({ audioContent: base64Audio }),
+          JSON.stringify({ audioContent: base64Audio, dialogueText: textForTTS }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -213,7 +213,7 @@ serve(async (req) => {
       // Fallback para mock de áudio se API falhar
       const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
       return new Response(
-        JSON.stringify({ audioContent: mockAudioBase64 }),
+        JSON.stringify({ audioContent: mockAudioBase64, dialogueText: textForTTS }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -223,7 +223,7 @@ serve(async (req) => {
     const base64Audio = base64Encode(new Uint8Array(arrayBuffer))
 
     return new Response(
-      JSON.stringify({ audioContent: base64Audio }),
+      JSON.stringify({ audioContent: base64Audio, dialogueText: textForTTS }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
@@ -232,7 +232,7 @@ serve(async (req) => {
     // Retorna mock de áudio em caso de erro
     const mockAudioBase64 = "UklGRiQAAABXQVZFZm10IBAAAAABAAEAVFYAAFRWAAABAAgAZGF0YQAAAAA="
     return new Response(
-      JSON.stringify({ audioContent: mockAudioBase64 }),
+      JSON.stringify({ audioContent: mockAudioBase64, dialogueText: 'Errore TTS: usando testo originale.' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

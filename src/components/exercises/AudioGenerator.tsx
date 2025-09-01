@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Volume2, Loader2 } from "lucide-react";
+import { Volume2, Loader2, Play, Pause, Square } from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from "@/hooks/use-toast";
+import { useSpeechSynthesis } from "@/hooks/useSpeechSynthesis";
 
 interface AudioGeneratorProps {
   text: string;
@@ -22,7 +23,13 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isFallbackTTS, setIsFallbackTTS] = useState(false);
   const [diagnostics, setDiagnostics] = useState<string[]>([]);
+  const [useWebSpeech, setUseWebSpeech] = useState(false);
+  const [webSpeechStarted, setWebSpeechStarted] = useState(false);
+  const [estimatedSec, setEstimatedSec] = useState<number | null>(null);
+  const [speechSourceText, setSpeechSourceText] = useState<string>(text);
   const { toast } = useToast();
+  const { supported, speaking, paused, speak, pause, resume, stop, recommendedRateForText, estimateDurationSec } = useSpeechSynthesis('it-IT');
+  const onReadyCalledRef = useRef(false);
 
   useEffect(() => {
     if (!text) return;
@@ -103,9 +110,17 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
         }
       });
       if (error) throw error;
+      if (data?.dialogueText) {
+        setSpeechSourceText(data.dialogueText);
+      }
       if (!data?.audioContent) throw new Error('TTS sem conteúdo');
-      if (data.audioContent.length < 10240) {
-        logDiag('TTS muito curto, possível bloqueio da API');
+      if (data.audioContent.length < 20000) {
+        logDiag('TTS muito curto — ativando fallback Web Speech');
+        setIsFallbackTTS(true);
+        setUseWebSpeech(true);
+        const rate = recommendedRateForText(text, 24);
+        setEstimatedSec(estimateDurationSec(text, rate));
+        return;
       }
       const binary = atob(data.audioContent);
       const bytes = new Uint8Array(binary.length);
@@ -117,10 +132,15 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
       logDiag('TTS pronto e associado');
     } catch (err) {
       console.error('Erro no TTS:', err);
+      logDiag(`Erro no TTS: ${(err as Error).message}`);
+      // Fallback to Web Speech API
+      setIsFallbackTTS(true);
+      setUseWebSpeech(true);
+      const rate = recommendedRateForText(text, 24);
+      setEstimatedSec(estimateDurationSec(text, rate));
       toast({
-        title: 'Erro no TTS',
-        description: 'Não foi possível gerar áudio agora.',
-        variant: 'destructive',
+        title: 'TTS indisponível',
+        description: 'Usando síntese de voz do navegador como fallback.',
       });
     } finally {
       setIsGenerating(false);
@@ -158,6 +178,63 @@ const AudioGenerator: React.FC<AudioGeneratorProps> = ({
   }
 
   if (!audioUrl) {
+    if (useWebSpeech && supported) {
+      return (
+        <Card className="mb-6">
+          <CardContent className="p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Volume2 className="w-5 h-5 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Usa i controlli per riprodurre, mettere in pausa e avanzare.</span>
+              </div>
+              <div className="text-xs text-muted-foreground">Audio generato automaticamente (TTS)</div>
+            </div>
+            <div className="flex items-center gap-2">
+              {!speaking && (
+                <Button
+                  onClick={() => {
+                    const rate = recommendedRateForText(speechSourceText, 24);
+                    setEstimatedSec(estimateDurationSec(speechSourceText, rate));
+                    speak(speechSourceText, { rate });
+                    if (!onReadyCalledRef.current) {
+                      onAudioReady('WEB_SPEECH_TTS');
+                      onReadyCalledRef.current = true;
+                    }
+                    setWebSpeechStarted(true);
+                  }}
+                  size="sm"
+                >
+                  <Play className="w-4 h-4 mr-2" /> Riproduci
+                </Button>
+              )}
+              {speaking && !paused && (
+                <Button onClick={pause} variant="outline" size="sm">
+                  <Pause className="w-4 h-4 mr-2" /> Pausa
+                </Button>
+              )}
+              {speaking && paused && (
+                <Button onClick={resume} variant="outline" size="sm">
+                  <Play className="w-4 h-4 mr-2" /> Riprendi
+                </Button>
+              )}
+              {(speaking || webSpeechStarted) && (
+                <Button onClick={() => { stop(); setWebSpeechStarted(false); }} variant="ghost" size="sm">
+                  <Square className="w-4 h-4 mr-2" /> Stop
+                </Button>
+              )}
+              <Button onClick={diagnoseAndPrepare} variant="secondary" size="sm">
+                Rigenera con IA
+              </Button>
+            </div>
+            {estimatedSec !== null && (
+              <div className="text-xs text-muted-foreground">
+                Durata stimata: ~{Math.round(estimatedSec)}s
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
     return (
       <Card className="mb-6">
         <CardContent className="p-6">
