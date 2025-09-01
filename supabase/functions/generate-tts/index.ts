@@ -169,9 +169,16 @@ serve(async (req) => {
         }
       }
       
-      // For now, return the first segment (proper audio concatenation would require more complex processing)
+      // Combine all segments into a single MP3 by concatenating frames
       if (audioSegments.length > 0) {
-        const base64Audio = base64Encode(audioSegments[0])
+        const totalLength = audioSegments.reduce((acc, seg) => acc + seg.length, 0)
+        const combined = new Uint8Array(totalLength)
+        let offset = 0
+        for (const seg of audioSegments) {
+          combined.set(seg, offset)
+          offset += seg.length
+        }
+        const base64Audio = base64Encode(combined)
         return new Response(
           JSON.stringify({ audioContent: base64Audio }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
