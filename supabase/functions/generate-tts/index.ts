@@ -71,79 +71,86 @@ serve(async (req) => {
       throw new Error('Texto é obrigatório')
     }
 
+    // Try Service Account (preferred) and fall back to API Key if needed
     const serviceAccountJson = Deno.env.get('GOOGLE_CLOUD_SERVICE_ACCOUNT_JSON')
-    if (!serviceAccountJson) {
-      throw new Error('GOOGLE_CLOUD_SERVICE_ACCOUNT_JSON não configurado')
+    const googleApiKey = Deno.env.get('GOOGLE_CLOUD_API_KEY')
+    const googleProjectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID') || ''
+
+    let accessToken: string | null = null
+
+    if (serviceAccountJson) {
+      try {
+        // Parse Service Account JSON
+        const serviceAccount = JSON.parse(serviceAccountJson)
+        
+        // Generate JWT token for OAuth2 authentication
+        const now = Math.floor(Date.now() / 1000)
+        const payload = {
+          iss: serviceAccount.client_email,
+          scope: 'https://www.googleapis.com/auth/cloud-platform',
+          aud: 'https://oauth2.googleapis.com/token',
+          exp: now + 3600,
+          iat: now
+        }
+
+        // Create JWT header and payload
+        const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+        const payloadStr = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+        
+        // Import private key for signing
+        const privateKeyPem = serviceAccount.private_key
+        const pemContents = privateKeyPem.replace(/-----BEGIN PRIVATE KEY-----|\r|\n|-----END PRIVATE KEY-----/g, '')
+        const binaryKey = atob(pemContents)
+        const keyBuffer = new Uint8Array(binaryKey.length)
+        for (let i = 0; i < binaryKey.length; i++) {
+          keyBuffer[i] = binaryKey.charCodeAt(i)
+        }
+        
+        const cryptoKey = await crypto.subtle.importKey(
+          'pkcs8',
+          keyBuffer,
+          { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+          false,
+          ['sign']
+        )
+        
+        // Sign the JWT
+        const dataToSign = header + '.' + payloadStr
+        const signature = await crypto.subtle.sign(
+          'RSASSA-PKCS1-v1_5',
+          cryptoKey,
+          new TextEncoder().encode(dataToSign)
+        )
+        
+        const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
+          .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+        
+        const jwt = `${header}.${payloadStr}.${signatureBase64}`
+        
+        // Exchange JWT for access token
+        const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({
+            grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            assertion: jwt
+          })
+        })
+        
+        if (!tokenResponse.ok) {
+          console.error('Failed to get access token with Service Account:', await tokenResponse.text())
+        } else {
+          const tokenData = await tokenResponse.json()
+          accessToken = tokenData.access_token
+        }
+      } catch (e) {
+        console.error('Service Account JSON parse/sign error, will try API key fallback:', e)
+      }
     }
 
-    const googleProjectId = Deno.env.get('GOOGLE_CLOUD_PROJECT_ID')
-    if (!googleProjectId) {
-      throw new Error('GOOGLE_CLOUD_PROJECT_ID não configurado')
+    if (!accessToken && !googleApiKey) {
+      throw new Error('Nenhuma credencial válida do Google encontrada (Service Account ou GOOGLE_CLOUD_API_KEY)')
     }
-
-    // Parse Service Account JSON
-    const serviceAccount = JSON.parse(serviceAccountJson)
-    
-    // Generate JWT token for OAuth2 authentication
-    const now = Math.floor(Date.now() / 1000)
-    const payload = {
-      iss: serviceAccount.client_email,
-      scope: 'https://www.googleapis.com/auth/cloud-platform',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now
-    }
-
-    // Create JWT header and payload
-    const header = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-    const payloadStr = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-    
-    // Import private key for signing
-    const privateKeyPem = serviceAccount.private_key
-    const pemContents = privateKeyPem.replace(/-----BEGIN PRIVATE KEY-----|\r|\n|-----END PRIVATE KEY-----/g, '')
-    const binaryKey = atob(pemContents)
-    const keyBuffer = new Uint8Array(binaryKey.length)
-    for (let i = 0; i < binaryKey.length; i++) {
-      keyBuffer[i] = binaryKey.charCodeAt(i)
-    }
-    
-    const cryptoKey = await crypto.subtle.importKey(
-      'pkcs8',
-      keyBuffer,
-      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-      false,
-      ['sign']
-    )
-    
-    // Sign the JWT
-    const dataToSign = header + '.' + payloadStr
-    const signature = await crypto.subtle.sign(
-      'RSASSA-PKCS1-v1_5',
-      cryptoKey,
-      new TextEncoder().encode(dataToSign)
-    )
-    
-    const signatureBase64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-    
-    const jwt = `${header}.${payloadStr}.${signatureBase64}`
-    
-    // Exchange JWT for access token
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-        assertion: jwt
-      })
-    })
-    
-    if (!tokenResponse.ok) {
-      throw new Error(`Failed to get access token: ${await tokenResponse.text()}`)
-    }
-    
-    const tokenData = await tokenResponse.json()
-    const accessToken = tokenData.access_token
 
     let textForTTS = text
 
@@ -170,12 +177,17 @@ serve(async (req) => {
       `
 
       try {
-        const vertexResponse = await fetch(`https://us-central1-aiplatform.googleapis.com/v1/projects/${googleProjectId}/locations/us-central1/publishers/google/models/gemini-1.5-flash:generateContent`, {
+        const useOAuth = !!accessToken && !!googleProjectId
+        const vertexUrl = useOAuth
+          ? `https://us-central1-aiplatform.googleapis.com/v1/projects/${googleProjectId}/locations/us-central1/publishers/google/models/gemini-1.5-flash:generateContent`
+          : `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${googleApiKey}`
+        const vertexHeaders: Record<string, string> = useOAuth
+          ? { 'Authorization': `Bearer ${accessToken!}`, 'Content-Type': 'application/json' }
+          : { 'Content-Type': 'application/json' }
+
+        const vertexResponse = await fetch(vertexUrl, {
           method: 'POST',
-          headers: { 
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json' 
-          },
+          headers: vertexHeaders,
           body: JSON.stringify({
             contents: [{ 
               parts: [{ text: dialoguePrompt }] 
@@ -235,12 +247,16 @@ serve(async (req) => {
           }
         }
 
-        const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+        const ttsUrl = accessToken
+          ? 'https://texttospeech.googleapis.com/v1/text:synthesize'
+          : `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleApiKey}`
+        const ttsHeaders: Record<string, string> = accessToken
+          ? { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+          : { 'Content-Type': 'application/json' }
+
+        const response = await fetch(ttsUrl, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
+          headers: ttsHeaders,
           body: JSON.stringify(ttsRequest)
         })
         
@@ -294,12 +310,16 @@ serve(async (req) => {
       }
     }
 
-    const response = await fetch('https://texttospeech.googleapis.com/v1/text:synthesize', {
+    const ttsUrlFinal = accessToken
+      ? 'https://texttospeech.googleapis.com/v1/text:synthesize'
+      : `https://texttospeech.googleapis.com/v1/text:synthesize?key=${googleApiKey}`
+    const ttsHeadersFinal: Record<string, string> = accessToken
+      ? { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json' }
+
+    const response = await fetch(ttsUrlFinal, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
+      headers: ttsHeadersFinal,
       body: JSON.stringify(ttsRequest)
     })
 
