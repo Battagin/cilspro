@@ -1,23 +1,22 @@
 # Use Node.js 18 Alpine image
-FROM node:18-alpine
-
-# Set working directory
+# Multi-stage build for Cloud Run
+FROM node:20-alpine AS builder
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy source code
+# Install all deps (including dev) to build Vite
+RUN npm ci
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Expose port
-EXPOSE 8080
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+# Install only production deps for smaller image
+COPY package*.json ./
+RUN npm ci --only=production
+# Copy server and built assets
+COPY --from=builder /app/dist ./dist
+COPY src/index.js ./src/index.js
 
-# Start the production server
-CMD ["npm", "start"]
+EXPOSE 8080
+CMD ["node", "src/index.js"]
